@@ -69,13 +69,15 @@ export default function PatientDashboard() {
         setProgress(progressData)
       }
 
-      // Fetch exercises due today or earlier that aren't completed
+      // Fetch exercises in current program (within date range)
       const today = new Date().toISOString().split('T')[0]
       const { data: exercises } = await supabase
         .from('exercise_assignments')
         .select(`
           id,
-          due_date,
+          start_date,
+          end_date,
+          daily_target,
           phase,
           exercises (
             name,
@@ -85,19 +87,38 @@ export default function PatientDashboard() {
             reps
           ),
           exercise_completions (
-            id
+            id,
+            completed_at
           )
         `)
         .eq('patient_id', authUser.id)
-        .lte('due_date', today)  // Due today or earlier
-        .order('due_date', { ascending: true })
+        .lte('start_date', today)  // Program has started
+        .gte('end_date', today)    // Program hasn't ended
+        .order('created_at', { ascending: true })
 
       if (exercises) {
-        // Filter out completed exercises
-        const incompleteExercises = exercises.filter(ex =>
-          !ex.exercise_completions || ex.exercise_completions.length === 0
-        )
-        setTodaysExercises(incompleteExercises as any)
+        // Check which exercises were completed TODAY
+        const todayStart = new Date()
+        todayStart.setHours(0, 0, 0, 0)
+        const todayEnd = new Date()
+        todayEnd.setHours(23, 59, 59, 999)
+
+        const exercisesWithTodayStatus = exercises.map(ex => {
+          const todayCompletions = ex.exercise_completions?.filter(comp => {
+            const completedDate = new Date(comp.completed_at)
+            return completedDate >= todayStart && completedDate <= todayEnd
+          }) || []
+
+          return {
+            ...ex,
+            completedToday: todayCompletions.length > 0,
+            todayCompletions: todayCompletions.length,
+            targetCompletions: ex.daily_target || 1
+          }
+        })
+
+        // Show all exercises, but mark completed ones differently
+        setTodaysExercises(exercisesWithTodayStatus as any)
       }
     } catch (error) {
       console.error('Error fetching user data:', error)
@@ -268,9 +289,9 @@ export default function PatientDashboard() {
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle>Today's Exercises</CardTitle>
+                <CardTitle>Your Weekly Exercise Program</CardTitle>
                 <CardDescription>
-                  Complete your daily exercises to maintain your streak
+                  Complete each exercise daily to maintain your streak
                 </CardDescription>
               </div>
               <Badge variant="outline">
@@ -285,29 +306,49 @@ export default function PatientDashboard() {
                 {todaysExercises.map((assignment) => (
                   <div
                     key={assignment.id}
-                    className="p-4 border rounded-lg hover:bg-gray-50 transition cursor-pointer"
+                    className={`p-4 border rounded-lg transition cursor-pointer ${
+                      assignment.completedToday
+                        ? 'bg-green-50 border-green-300 hover:bg-green-100'
+                        : 'hover:bg-gray-50'
+                    }`}
                     onClick={() => router.push(`/patient/exercise/${assignment.id}`)}
                   >
                     <div className="flex justify-between items-center">
                       <div className="flex-1">
-                        <h4 className="font-semibold">{assignment.exercise.name}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold">{assignment.exercises.name}</h4>
+                          {assignment.completedToday && (
+                            <Badge className="bg-green-600 text-xs">
+                              ✓ Done Today
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-600">
-                          {assignment.exercise.sets} sets × {assignment.exercise.reps} reps
+                          {assignment.exercises.sets} sets × {assignment.exercises.reps} reps
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Daily Progress: {assignment.todayCompletions}/{assignment.targetCompletions}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs">
-                          Due: {new Date(assignment.due_date).toLocaleDateString()}
+                          {Math.ceil((new Date(assignment.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days left
                         </Badge>
                         <ChevronRight className="w-5 h-5 text-gray-400" />
                       </div>
                     </div>
                   </div>
                 ))}
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    💡 <strong>Tip:</strong> Complete all exercises daily to maintain your streak.
+                    You can repeat exercises multiple times per day if desired!
+                  </p>
+                </div>
               </div>
             ) : (
               <p className="text-center text-gray-500 py-8">
-                No exercises scheduled for today. Check back tomorrow!
+                No exercises currently assigned. Visit your healthcare provider for an assessment.
               </p>
             )}
           </CardContent>

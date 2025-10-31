@@ -177,7 +177,14 @@ export interface Database {
           exercise_id: string
           assigned_by: string
           assigned_date: string
-          due_date: string
+          due_date: string  // Keep for backward compatibility
+          start_date: string
+          end_date: string
+          daily_target: number
+          custom_sets: number | null
+          custom_reps: number | null
+          total_completions_required: number
+          assessment_id: string | null
           phase: 'analyze' | 'mobilize' | 'stabilize' | 'optimize'
           created_at: string
           updated_at: string
@@ -188,7 +195,14 @@ export interface Database {
           exercise_id: string
           assigned_by: string
           assigned_date: string
-          due_date: string
+          due_date?: string  // Optional for backward compatibility
+          start_date: string
+          end_date: string
+          daily_target?: number
+          custom_sets?: number | null
+          custom_reps?: number | null
+          total_completions_required?: number
+          assessment_id?: string | null
           phase: 'analyze' | 'mobilize' | 'stabilize' | 'optimize'
           created_at?: string
           updated_at?: string
@@ -200,6 +214,13 @@ export interface Database {
           assigned_by?: string
           assigned_date?: string
           due_date?: string
+          start_date?: string
+          end_date?: string
+          daily_target?: number
+          custom_sets?: number | null
+          custom_reps?: number | null
+          total_completions_required?: number
+          assessment_id?: string | null
           phase?: 'analyze' | 'mobilize' | 'stabilize' | 'optimize'
           created_at?: string
           updated_at?: string
@@ -211,6 +232,7 @@ export interface Database {
           assignment_id: string
           patient_id: string
           completed_at: string
+          completion_date: string  // Generated column from DATE(completed_at)
           notes: string | null
           created_at: string
         }
@@ -218,7 +240,7 @@ export interface Database {
           id?: string
           assignment_id: string
           patient_id: string
-          completed_at: string
+          completed_at?: string
           notes?: string | null
           created_at?: string
         }

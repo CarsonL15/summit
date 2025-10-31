@@ -120,8 +120,8 @@ export default function EmployeeDashboard() {
     setAddingPatient(true)
 
     try {
-      // Generate a temporary password
-      const tempPassword = `Temp${Math.random().toString(36).slice(-8)}!`
+      // Generate a random temporary password (user won't see this)
+      const tempPassword = `TempPass${Math.random().toString(36).slice(-12)}!${Date.now()}`
 
       // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -170,8 +170,20 @@ export default function EmployeeDashboard() {
             total_exercises_completed: 0,
           })
 
-        // TODO: In production, send an email with login credentials
-        alert(`Patient created successfully!\n\nEmail: ${newPatient.email}\nTemporary Password: ${tempPassword}\n\n(In production, this would be sent via email)`)
+        // Send password reset email so patient can set their own password
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+          newPatient.email,
+          {
+            redirectTo: `${window.location.origin}/auth/reset-password`,
+          }
+        )
+
+        if (resetError) {
+          console.error('Password reset email error:', resetError)
+          alert(`Patient created, but failed to send setup email: ${resetError.message}\n\nYou can manually send them a password reset link.`)
+        } else {
+          alert(`Patient created successfully!\n\nAn email has been sent to ${newPatient.email} with instructions to set their password.`)
+        }
 
         // Reset form and close modal
         setNewPatient({ firstName: '', lastName: '', email: '' })
