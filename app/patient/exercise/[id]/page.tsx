@@ -67,7 +67,9 @@ export default function ExerciseDetailPage() {
         .from('exercise_assignments')
         .select(`
           id,
-          due_date,
+          start_date,
+          end_date,
+          daily_target,
           phase,
           exercises (
             id,
@@ -94,8 +96,19 @@ export default function ExerciseDetailPage() {
         return
       }
 
+      // Check if completed today
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const todayEnd = new Date()
+      todayEnd.setHours(23, 59, 59, 999)
+
+      const todayCompletions = assignmentData.exercise_completions.filter(comp => {
+        const completedDate = new Date(comp.completed_at)
+        return completedDate >= todayStart && completedDate <= todayEnd
+      })
+
       setAssignment(assignmentData as any)
-      setIsCompleted(assignmentData.exercise_completions.length > 0)
+      setIsCompleted(todayCompletions.length >= (assignmentData.daily_target || 1))
 
       // Get user progress
       const { data: progressData } = await supabase
@@ -170,7 +183,7 @@ export default function ExerciseDetailPage() {
   }
 
   const handleCompleteExercise = async () => {
-    if (isCompleted || !assignment) return
+    if (!assignment) return
 
     setIsCompleting(true)
 
@@ -178,7 +191,24 @@ export default function ExerciseDetailPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // 1. Mark exercise as completed
+      // Check if already completed today (but allow multiple if under daily target)
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const todayEnd = new Date()
+      todayEnd.setHours(23, 59, 59, 999)
+
+      const { data: todayCompletions } = await supabase
+        .from('exercise_completions')
+        .select('*')
+        .eq('assignment_id', assignment.id)
+        .eq('patient_id', user.id)
+        .gte('completed_at', todayStart.toISOString())
+        .lte('completed_at', todayEnd.toISOString())
+
+      const completionsToday = todayCompletions?.length || 0
+      const dailyTarget = assignment.daily_target || 1
+
+      // 1. Mark exercise as completed (allow multiple per day)
       const { error: completionError } = await supabase
         .from('exercise_completions')
         .insert({
@@ -196,15 +226,17 @@ export default function ExerciseDetailPage() {
       // 2. Calculate new streak
       const newStreak = await calculateNewStreak(user.id)
 
-      // 3. Update patient progress
-      const pointsEarned = 10 // Base points for completing an exercise
+      // 3. Update patient progress (award points only on first completion of the day)
+      const pointsEarned = completionsToday === 0 ? 10 : 0 // Points only for first completion
+      const exerciseIncrement = completionsToday === 0 ? 1 : 0 // Count unique exercises per day
+
       const { error: progressError } = await supabase
         .from('patient_progress')
         .update({
           points: (userProgress?.points || 0) + pointsEarned,
           streak_days: newStreak,
           last_activity_date: new Date().toISOString().split('T')[0],
-          total_exercises_completed: (userProgress?.total_exercises_completed || 0) + 1,
+          total_exercises_completed: (userProgress?.total_exercises_completed || 0) + exerciseIncrement,
         })
         .eq('patient_id', user.id)
 
@@ -313,7 +345,7 @@ export default function ExerciseDetailPage() {
                 {isCompleted && (
                   <Badge className="bg-green-500">
                     <CheckCircle className="w-3 h-3 mr-1" />
-                    Completed
+                    Daily Target Met
                   </Badge>
                 )}
               </div>
@@ -434,7 +466,7 @@ export default function ExerciseDetailPage() {
           {isCompleted ? (
             <div className="text-center">
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Exercise Completed!</h3>
+              <h3 className="text-xl font-semibold mb-2">Daily Target Achieved!</h3>
               <p className="text-gray-600 mb-4">Great job! You've completed this exercise.</p>
               <Button onClick={() => router.push('/patient')}>
                 Back to Dashboard

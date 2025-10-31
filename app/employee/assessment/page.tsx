@@ -95,7 +95,18 @@ export default function FMSAssessmentPage() {
   }
 
   const calculateTotalScore = () => {
-    return Object.values(scores).reduce((sum, score) => sum + score, 0)
+    // For bilateral movements, take the lower of the two scores
+    const deepSquat = scores.deep_squat
+    const hurdleStep = Math.min(scores.hurdle_step_left, scores.hurdle_step_right)
+    const inlineLunge = Math.min(scores.inline_lunge_left, scores.inline_lunge_right)
+    const shoulderMobility = Math.min(scores.shoulder_mobility_left, scores.shoulder_mobility_right)
+    const activeStraightLegRaise = Math.min(scores.active_straight_leg_raise_left, scores.active_straight_leg_raise_right)
+    const trunkStability = scores.trunk_stability_push_up
+    const rotaryStability = Math.min(scores.rotary_stability_left, scores.rotary_stability_right)
+
+    // Total score is sum of all 7 movement patterns (max 21)
+    return deepSquat + hurdleStep + inlineLunge + shoulderMobility +
+           activeStraightLegRaise + trunkStability + rotaryStability
   }
 
   const getScoreColor = (score: number) => {
@@ -109,18 +120,7 @@ export default function FMSAssessmentPage() {
     setScores(prev => ({ ...prev, [movement]: score }))
   }
 
-  const assignExercisesBasedOnScores = async (patientId: string, assessmentScores: FMSScores) => {
-    // Map movement patterns to exercise categories
-    const movementToCategory: Record<string, string[]> = {
-      deep_squat: ['Deep Squat'],
-      hurdle_step: ['Hurdle Step'],
-      inline_lunge: ['Inline Lunge'],
-      shoulder_mobility: ['Shoulder Mobility'],
-      active_straight_leg_raise: ['ASLR'],
-      trunk_stability_push_up: ['Trunk Stability'],
-      rotary_stability: ['Rotary Stability'],
-    }
-
+  const assignExercisesBasedOnScores = async (patientId: string, assessmentScores: FMSScores, assessmentId: string) => {
     // Get all exercises
     const { data: exercises } = await supabase
       .from('exercises')
@@ -130,33 +130,42 @@ export default function FMSAssessmentPage() {
 
     const exercisesToAssign = []
     const today = new Date()
-    const dueDate = new Date(today)
-    dueDate.setDate(dueDate.getDate() + 7) // Due in 7 days
+    const startDate = new Date(today)
+    const endDate = new Date(today)
+    endDate.setDate(endDate.getDate() + 7) // 7-day program
+
+    // Calculate effective scores for each movement pattern (taking lower of bilateral)
+    const movementScores = {
+      'Deep Squat': assessmentScores.deep_squat,
+      'Hurdle Step': Math.min(assessmentScores.hurdle_step_left, assessmentScores.hurdle_step_right),
+      'Inline Lunge': Math.min(assessmentScores.inline_lunge_left, assessmentScores.inline_lunge_right),
+      'Shoulder Mobility': Math.min(assessmentScores.shoulder_mobility_left, assessmentScores.shoulder_mobility_right),
+      'ASLR': Math.min(assessmentScores.active_straight_leg_raise_left, assessmentScores.active_straight_leg_raise_right),
+      'Trunk Stability': assessmentScores.trunk_stability_push_up,
+      'Rotary Stability': Math.min(assessmentScores.rotary_stability_left, assessmentScores.rotary_stability_right),
+    }
 
     // Check each movement pattern
-    for (const [movement, score] of Object.entries(assessmentScores)) {
+    for (const [category, score] of Object.entries(movementScores)) {
       if (score <= 1) { // Needs corrective exercises
-        // Find the category for this movement
-        let category = ''
-        if (movement === 'deep_squat') category = 'Deep Squat'
-        else if (movement.includes('hurdle_step')) category = 'Hurdle Step'
-        else if (movement.includes('inline_lunge')) category = 'Inline Lunge'
-        else if (movement.includes('shoulder_mobility')) category = 'Shoulder Mobility'
-        else if (movement.includes('active_straight_leg_raise')) category = 'ASLR'
-        else if (movement === 'trunk_stability_push_up') category = 'Trunk Stability'
-        else if (movement.includes('rotary_stability')) category = 'Rotary Stability'
-
         // Get exercises for this category
         const categoryExercises = exercises.filter(ex => ex.category === category)
 
-        // Add 1-2 exercises from this category
-        categoryExercises.slice(0, 2).forEach(exercise => {
+        // Add only 1 exercise per category to reduce total count
+        categoryExercises.slice(0, 1).forEach(exercise => {
           exercisesToAssign.push({
             patient_id: patientId,
             exercise_id: exercise.id,
             assigned_by: employee.id,
             assigned_date: today.toISOString().split('T')[0],
-            due_date: dueDate.toISOString().split('T')[0],
+            start_date: startDate.toISOString().split('T')[0],
+            end_date: endDate.toISOString().split('T')[0],
+            due_date: endDate.toISOString().split('T')[0], // Keep for backward compatibility
+            daily_target: 1, // One completion per day
+            custom_sets: exercise.sets, // Initialize with exercise defaults
+            custom_reps: exercise.reps, // Initialize with exercise defaults
+            total_completions_required: 7, // Default to daily over 7 days
+            assessment_id: assessmentId,
             phase: 'mobilize', // Start with mobilize phase for corrective work
           })
         })
@@ -170,7 +179,7 @@ export default function FMSAssessmentPage() {
         .insert(exercisesToAssign)
     }
 
-    return exercisesToAssign.length
+    return { count: exercisesToAssign.length, assessmentId }
   }
 
   const handleSubmit = async () => {
@@ -202,7 +211,7 @@ export default function FMSAssessmentPage() {
       }
 
       // Automatically assign exercises based on scores
-      const exerciseCount = await assignExercisesBasedOnScores(selectedPatient, scores)
+      const result = await assignExercisesBasedOnScores(selectedPatient, scores, assessment.id)
 
       // Update patient phase to 'mobilize' if they were in 'analyze'
       await supabase
@@ -213,10 +222,10 @@ export default function FMSAssessmentPage() {
 
       setSuccess(true)
 
-      // Show success and redirect
+      // Show success and redirect to review page
       setTimeout(() => {
-        alert(`Assessment saved! ${exerciseCount || 0} exercises assigned based on FMS scores.`)
-        router.push('/employee')
+        alert(`Assessment saved! ${result?.count || 0} exercises assigned. Redirecting to review...`)
+        router.push(`/employee/assessment/review/${assessment.id}`)
       }, 1500)
 
     } catch (error) {
