@@ -292,7 +292,7 @@
 8. **achievements** - Earned achievements
 
 ### Important Notes
-- RLS is DISABLED for testing (re-enable for production)
+- Row Level Security (RLS) is currently disabled for development
 - Email confirmation is DISABLED in Supabase
 - All users need a `clinic_id` to interact with each other
 - Exercises use date ranges (start_date to end_date) not single due_date
@@ -371,9 +371,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 2. **SQL Editor** (run in order):
    - `supabase/schema.sql` (initial schema)
    - `supabase/seed.sql` (exercise data)
-   - `supabase/migrations/002_update_exercise_assignments.sql`
-   - `supabase/migrations/003_fix_fms_total_score.sql`
-   - `supabase/migrations/004_add_custom_exercise_parameters.sql`
 
 ### Optional (for production)
 ```bash
@@ -386,7 +383,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 ```bash
 # Development
-npm run dev          # Start dev server (http://localhost:3000)
+npm run dev          # Start dev server (http://localhost:3001)
 
 # Production
 npm run build        # Build for production
@@ -424,9 +421,8 @@ npm run lint         # Run Next.js linter
 ### Database
 - `supabase/schema.sql` - Complete database schema
 - `supabase/seed.sql` - 40+ exercise seed data
-- `supabase/migrations/` - NEW: Database migration files
-- `types/supabase.ts` - TypeScript types for database (UPDATED: new fields)
-- `DATABASE_SCHEMA.md` - NEW: Complete schema documentation
+- `types/supabase.ts` - TypeScript types for database
+- `DATABASE_SCHEMA.md` - Complete schema documentation
 
 ---
 
@@ -467,7 +463,6 @@ npm run lint         # Run Next.js linter
 **Date Completed**: October 31, 2025
 **Features Added**: 10 major features
 **Files Modified**: 8 core files
-**Migrations Created**: 3 (002, 003, 004)
 **New Files Created**: 3 (review page, reset password, DATABASE_SCHEMA.md)
 **Bugs Fixed**: 5 critical issues
 **Lines of Code Added**: ~800+

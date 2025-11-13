@@ -36,7 +36,6 @@ Summit helps chiropractic clinics digitize their Functional Movement Screen (FMS
 7. **Custom Exercise Parameters** - Employees can adjust sets, reps, and total completions per exercise
 8. **Adjustable Program Duration** - Employees can set program length (1-30 days)
 9. **Password Reset Flow** - Patients set their own password via email link
-10. **Database Migrations** - 4 migrations applied for new features
 
 ## Features
 
@@ -109,8 +108,7 @@ summit/
 │   └── supabase.ts              # Database types
 ├── supabase/
 │   ├── schema.sql               # Initial schema
-│   ├── seed.sql                 # Exercise seed data
-│   └── migrations/              # Database migrations
+│   └── seed.sql                 # Exercise seed data
 ├── DATABASE_SCHEMA.md           # Complete schema documentation
 ├── DEVELOPMENT.md               # Development status
 ├── ROADMAP.md                   # Future plans
@@ -157,7 +155,6 @@ npm install
    - Go to SQL Editor and run:
      1. `supabase/schema.sql` (initial schema)
      2. `supabase/seed.sql` (exercise data)
-     3. All files in `supabase/migrations/` folder (in order)
 
 4. **Configure environment variables**
    - Copy `.env.local.example` to `.env.local`
@@ -179,7 +176,7 @@ npm run dev
 ```
 
 7. **Open the application**
-   - Navigate to http://localhost:3001
+   - Navigate to http://localhost:3001 (or port shown in terminal)
    - Create accounts for testing different roles
 
 ## FMS Assessment Scoring (FIXED)

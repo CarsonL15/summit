@@ -46,8 +46,7 @@ summit/
 ├── types/supabase.ts             # Database TypeScript types
 ├── supabase/
 │   ├── schema.sql                # Initial database schema
-│   ├── seed.sql                  # 40+ exercise seed data
-│   └── migrations/               # Database migrations
+│   └── seed.sql                  # 40+ exercise seed data
 ├── DATABASE_SCHEMA.md            # ⭐ SINGLE SOURCE OF TRUTH for DB
 ├── DEVELOPMENT.md                # Development guide & testing
 ├── ROADMAP.md                    # Future features & timeline
@@ -149,7 +148,6 @@ npm run lint         # Run Next.js linter
 ### 1. Database Schema Changes
 - **ALWAYS** read `DATABASE_SCHEMA.md` first
 - **ALWAYS** update `DATABASE_SCHEMA.md` after schema changes
-- Create migration files in `supabase/migrations/`
 - Update `types/supabase.ts` to match schema
 
 ### 2. FMS Scoring
@@ -256,10 +254,8 @@ Enter: Deep Squat=3, Hurdle(L=3,R=3), Inline(L=2,R=3), Shoulder(L=3,R=3), ASLR(L
 - **Colors**: Use Summit brand colors from tailwind.config.ts ✨ NEW
 
 ### When Updating Database:
-1. Create migration file in `supabase/migrations/`
-2. Update `types/supabase.ts`
-3. Update `DATABASE_SCHEMA.md`
-4. Update `MIGRATION_INSTRUCTIONS.md`
+1. Update `types/supabase.ts`
+2. Update `DATABASE_SCHEMA.md`
 
 ### Common File Paths:
 - FMS scoring logic: `app/employee/assessment/page.tsx:100-109`
@@ -278,7 +274,6 @@ Enter: Deep Squat=3, Hurdle(L=3,R=3), Inline(L=2,R=3), Shoulder(L=3,R=3), ASLR(L
 - **Future plans**: `ROADMAP.md`
 - **Database reference**: `DATABASE_SCHEMA.md` ⭐
 - **Design system**: `STYLE_GUIDE.md` ✨ NEW
-- **Migration guide**: `MIGRATION_INSTRUCTIONS.md`
 - **This file**: `CLAUDE.md`
 
 ---
