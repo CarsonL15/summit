@@ -1,0 +1,173 @@
+'use client'
+
+import Link from 'next/link'
+import { Flame, Shield, Users, Trophy, Target, TrendingUp } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+
+export default function FireLandingPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-10"></div>
+
+        <div className="relative container mx-auto px-4 py-20">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-16">
+            <div className="flex items-center gap-3">
+              <Flame className="h-8 w-8 text-fire-red" />
+              <h1 className="text-2xl font-bold text-white">FireFMS</h1>
+            </div>
+            <Link href="/auth/login">
+              <Button variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20">
+                Demo Login
+              </Button>
+            </Link>
+          </div>
+
+          {/* Hero Content */}
+          <div className="max-w-4xl mx-auto text-center">
+            <Badge className="mb-4 bg-fire-red/20 text-fire-red border-fire-red/30">
+              Functional Movement Screen for First Responders
+            </Badge>
+
+            <h2 className="text-5xl md:text-6xl font-bold text-white mb-6">
+              Train Like Your Life
+              <span className="block text-fire-gold">Depends On It</span>
+            </h2>
+
+            <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+              Professional FMS assessments and targeted training programs designed specifically
+              for firefighters and first responders. Reduce injuries, improve performance,
+              and track department-wide progress.
+            </p>
+
+            <div className="flex gap-4 justify-center">
+              <Link href="/auth/login">
+                <Button size="lg" className="bg-fire-red hover:bg-red-700 text-white">
+                  <Shield className="mr-2 h-5 w-5" />
+                  Try Demo
+                </Button>
+              </Link>
+              <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20">
+                Learn More
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Features Section */}
+      <div className="container mx-auto px-4 py-20">
+        <div className="text-center mb-12">
+          <h3 className="text-3xl font-bold text-white mb-4">
+            Built for Fire Departments
+          </h3>
+          <p className="text-gray-400 max-w-2xl mx-auto">
+            Comprehensive movement screening and training system tailored to the unique
+            physical demands of firefighting.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          <Card className="bg-white/5 border-white/10 p-6">
+            <div className="rounded-lg bg-fire-red/20 w-12 h-12 flex items-center justify-center mb-4">
+              <Target className="h-6 w-6 text-fire-red" />
+            </div>
+            <h4 className="text-xl font-semibold text-white mb-2">
+              FMS Assessments
+            </h4>
+            <p className="text-gray-400">
+              Professional 7-pattern movement screens to identify asymmetries and
+              movement deficiencies before they become injuries.
+            </p>
+          </Card>
+
+          <Card className="bg-white/5 border-white/10 p-6">
+            <div className="rounded-lg bg-fire-gold/20 w-12 h-12 flex items-center justify-center mb-4">
+              <TrendingUp className="h-6 w-6 text-fire-gold" />
+            </div>
+            <h4 className="text-xl font-semibold text-white mb-2">
+              3-Week Programs
+            </h4>
+            <p className="text-gray-400">
+              Targeted mini-series programs that progressively build mobility,
+              stability, and strength specific to firefighting tasks.
+            </p>
+          </Card>
+
+          <Card className="bg-white/5 border-white/10 p-6">
+            <div className="rounded-lg bg-blue-500/20 w-12 h-12 flex items-center justify-center mb-4">
+              <Trophy className="h-6 w-6 text-blue-400" />
+            </div>
+            <h4 className="text-xl font-semibold text-white mb-2">
+              Gamified Training
+            </h4>
+            <p className="text-gray-400">
+              Points, streaks, leaderboards, and achievements keep your crew
+              motivated and engaged with their corrective exercises.
+            </p>
+          </Card>
+        </div>
+      </div>
+
+      {/* Stats Section */}
+      <div className="bg-black/30 py-16">
+        <div className="container mx-auto px-4">
+          <div className="grid md:grid-cols-4 gap-8 text-center">
+            <div>
+              <div className="text-4xl font-bold text-fire-gold mb-2">73%</div>
+              <div className="text-gray-400">Injury Reduction</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold text-fire-gold mb-2">3-Week</div>
+              <div className="text-gray-400">Program Cycles</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold text-fire-gold mb-2">10+</div>
+              <div className="text-gray-400">Departments Using</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold text-fire-gold mb-2">500+</div>
+              <div className="text-gray-400">Firefighters Trained</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CTA Section */}
+      <div className="container mx-auto px-4 py-20">
+        <Card className="bg-gradient-to-r from-fire-red/20 to-fire-gold/20 border-fire-red/30 p-12">
+          <div className="text-center">
+            <Users className="h-12 w-12 text-fire-gold mx-auto mb-4" />
+            <h3 className="text-3xl font-bold text-white mb-4">
+              Ready to Get Your Department Started?
+            </h3>
+            <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
+              Try our demo to see how FireFMS can help reduce injuries and improve
+              performance across your entire department.
+            </p>
+            <Link href="/auth/login">
+              <Button size="lg" className="bg-white text-slate-900 hover:bg-gray-100">
+                Access Demo Dashboard
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+
+      {/* Demo Accounts Info */}
+      <div className="container mx-auto px-4 pb-12">
+        <div className="text-center">
+          <p className="text-gray-500 text-sm">
+            Demo Accounts: chief@firestation1.com (Chief) | john@firestation1.com (Firefighter)
+            <br />
+            Password: demo123
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
