@@ -1,7 +1,7 @@
 # Summit - AI Assistant Context File
 
 **Last Updated**: October 31, 2025
-**Version**: 0.2.0 (Phase 2 Complete)
+**Version**: 0.3.0 (Visual Polish Complete)
 **Purpose**: Quick reference for Claude Code or other AI assistants
 
 ---
@@ -20,31 +20,38 @@ Patients "climb the mountain" through 4 phases (Analyze → Mobilize → Stabili
 ```
 summit/
 ├── app/                          # Next.js 14 App Router
+│   ├── page.tsx                  # ✨ Landing page with animations
 │   ├── auth/
-│   │   ├── login/
-│   │   ├── signup/
-│   │   └── reset-password/       # Password reset page (Phase 2)
+│   │   ├── login/                # ✨ Polished with animations
+│   │   ├── signup/               # ✨ Polished with animations
+│   │   └── reset-password/       # ✨ Polished with animations
 │   ├── patient/
-│   │   ├── page.tsx              # Patient dashboard (weekly exercises)
-│   │   └── exercise/[id]/        # Exercise completion page
+│   │   ├── page.tsx              # ✨ Mountain visualization, theme toggle
+│   │   └── exercise/[id]/        # ✨ Celebration animations
 │   ├── employee/
-│   │   ├── page.tsx              # Employee dashboard
+│   │   ├── page.tsx              # ✨ Polished dashboard
 │   │   ├── assessment/
-│   │   │   ├── page.tsx          # FMS assessment tool
-│   │   │   └── review/[assessmentId]/  # Exercise review (Phase 2)
-│   │   └── patient/[id]/
-│   └── owner/
-├── components/ui/                # shadcn/ui components
+│   │   │   ├── page.tsx          # ✨ Animated scoring interface
+│   │   │   └── review/[id]/      # ✨ Collapsible panels, animations
+│   │   └── patient/[id]/         # ✨ Animated progress cards
+│   └── owner/                    # ✨ Polished analytics
+├── components/
+│   ├── ui/
+│   │   ├── animated-card.tsx     # ✨ NEW: Framer Motion cards
+│   │   ├── progress-bar.tsx      # ✨ NEW: Animated progress
+│   │   ├── skeleton.tsx          # ✨ NEW: Loading states
+│   │   └── [shadcn]              # shadcn/ui components
+│   └── theme-provider.tsx        # ✨ NEW: Dark mode provider
 ├── lib/supabase/                 # Supabase client setup
 ├── types/supabase.ts             # Database TypeScript types
 ├── supabase/
 │   ├── schema.sql                # Initial database schema
 │   ├── seed.sql                  # 40+ exercise seed data
-│   └── migrations/               # Phase 2 migrations (002, 003, 004)
+│   └── migrations/               # Database migrations
 ├── DATABASE_SCHEMA.md            # ⭐ SINGLE SOURCE OF TRUTH for DB
 ├── DEVELOPMENT.md                # Development guide & testing
 ├── ROADMAP.md                    # Future features & timeline
-├── MIGRATION_INSTRUCTIONS.md     # How to apply Phase 2 migrations
+├── STYLE_GUIDE.md                # ✨ NEW: Design system & brand guide
 └── README.md                     # Main project documentation
 ```
 
@@ -104,6 +111,8 @@ summit/
 - **Database**: Supabase (PostgreSQL with Row Level Security - currently disabled)
 - **Authentication**: Supabase Auth
 - **Styling**: Tailwind CSS + shadcn/ui components
+- **Animations**: Framer Motion ✨ NEW
+- **Theme**: next-themes (dark/light mode) ✨ NEW
 - **Hosting**: Vercel
 - **Package Manager**: npm
 - **Dev Server**: `npm run dev` (runs on port 3001)
@@ -111,6 +120,8 @@ summit/
 ### Important Dependencies:
 - `@supabase/supabase-js` - Supabase client
 - `@supabase/ssr` - Server-side rendering support
+- `framer-motion` - ✨ Animation library
+- `next-themes` - ✨ Theme switching
 - `canvas-confetti` - Celebration animations
 - `lucide-react` - Icons
 - `class-variance-authority`, `clsx`, `tailwind-merge` - Utility classes
@@ -207,11 +218,21 @@ Enter: Deep Squat=3, Hurdle(L=3,R=3), Inline(L=2,R=3), Shoulder(L=3,R=3), ASLR(L
 - Password reset flow
 - Daily tracking improvements
 
+### ✅ Visual Polish Complete (Oct 31, 2025) ✨ NEW
+- Global dark/light mode with next-themes
+- Framer Motion animations across all pages
+- Summit brand colors (#0d3d62, #afa586)
+- AnimatedCard, ProgressBar, Skeleton components
+- Landing page redesign with hero & features
+- STYLE_GUIDE.md for consistent design
+- 11+ pages polished with animations
+
 ### 🔄 Phase 3 Next (Recommended):
-1. Framer Motion animations (2-3 hrs)
+1. ✅ ~~Framer Motion animations~~ - COMPLETED!
 2. Video integration (3-4 hrs)
 3. Email notifications (4-5 hrs)
 4. Phase progression logic (3-4 hrs)
+5. Mobile optimization (2-3 hrs)
 
 ---
 
@@ -229,6 +250,10 @@ Enter: Deep Squat=3, Hurdle(L=3,R=3), Inline(L=2,R=3), Shoulder(L=3,R=3), ASLR(L
 - **Points**: Check daily completions first
 - **Types**: Import from `@/types/supabase`
 - **Client**: Use `createClient()` from `@/lib/supabase/client` or `server`
+- **Animations**: Use Framer Motion for all animations ✨ NEW
+- **Theme**: Use `useTheme()` from next-themes for dark mode ✨ NEW
+- **Components**: Use AnimatedCard instead of Card for polish ✨ NEW
+- **Colors**: Use Summit brand colors from tailwind.config.ts ✨ NEW
 
 ### When Updating Database:
 1. Create migration file in `supabase/migrations/`
@@ -252,9 +277,10 @@ Enter: Deep Squat=3, Hurdle(L=3,R=3), Inline(L=2,R=3), Shoulder(L=3,R=3), ASLR(L
 - **Developer guide**: `DEVELOPMENT.md`
 - **Future plans**: `ROADMAP.md`
 - **Database reference**: `DATABASE_SCHEMA.md` ⭐
+- **Design system**: `STYLE_GUIDE.md` ✨ NEW
 - **Migration guide**: `MIGRATION_INSTRUCTIONS.md`
 - **This file**: `CLAUDE.md`
 
 ---
 
-**Remember**: This project is ready for client demo! The core functionality works well. Next focus should be on polish (animations, videos) or production readiness (email notifications).
+**Remember**: This project is fully polished and ready for client demo! The visual design is complete with animations and dark mode. Core functionality works well. Next focus should be on videos or production readiness (email notifications).

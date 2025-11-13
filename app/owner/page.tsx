@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { AnimatedCard, AnimatedCardContent, AnimatedCardDescription, AnimatedCardHeader, AnimatedCardTitle } from '@/components/ui/animated-card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { ProgressBar } from '@/components/ui/progress-bar'
 import {
   Users,
   TrendingUp,
@@ -20,7 +24,10 @@ import {
   Mountain,
   Flame,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  User,
+  Briefcase,
+  Crown
 } from 'lucide-react'
 
 interface ClinicStats {
@@ -58,6 +65,21 @@ interface TopPatient {
   phase: string
 }
 
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 }
+}
+
 export default function OwnerDashboard() {
   const [owner, setOwner] = useState<any>(null)
   const [clinicStats, setClinicStats] = useState<ClinicStats>({
@@ -80,6 +102,7 @@ export default function OwnerDashboard() {
   const [employeePerformance, setEmployeePerformance] = useState<EmployeePerformance[]>([])
   const [topPatients, setTopPatients] = useState<TopPatient[]>([])
   const [loading, setLoading] = useState(true)
+  const [showUserMenu, setShowUserMenu] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -159,7 +182,7 @@ export default function OwnerDashboard() {
         // Get assessments count
         const { data: assessments } = await supabase
           .from('fms_assessments')
-          .select('id, employee_id, created_at')
+          .select('id, employee_id, created_at, patient_id')
           .in('patient_id', patientIds)
 
         // Get exercise assignments and completions
@@ -195,7 +218,7 @@ export default function OwnerDashboard() {
         const employeeStats: EmployeePerformance[] = []
         for (const employee of employees) {
           const employeeAssessments = assessments?.filter(a => a.employee_id === employee.id) || []
-          const employeePatients = new Set(employeeAssessments.map(a => a.patient_id)).size
+          const uniquePatients = new Set(employeeAssessments.map(a => a.patient_id))
           const lastAssessment = employeeAssessments.length > 0
             ? employeeAssessments.sort((a, b) =>
                 new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -205,7 +228,7 @@ export default function OwnerDashboard() {
           employeeStats.push({
             id: employee.id,
             name: `${employee.first_name} ${employee.last_name}`,
-            patientCount: employeePatients,
+            patientCount: uniquePatients.size,
             assessmentCount: employeeAssessments.length,
             lastAssessmentDate: lastAssessment,
           })
@@ -237,281 +260,425 @@ export default function OwnerDashboard() {
     }
   }
 
-  const getPhaseColor = (phase: string) => {
+  const getPhaseColor = (phase: string): "phase-analyze" | "phase-mobilize" | "phase-stabilize" | "phase-optimize" => {
     const colors = {
-      analyze: 'bg-blue-500',
-      mobilize: 'bg-green-500',
-      stabilize: 'bg-yellow-500',
-      optimize: 'bg-purple-500',
+      analyze: 'phase-analyze',
+      mobilize: 'phase-mobilize',
+      stabilize: 'phase-stabilize',
+      optimize: 'phase-optimize',
     }
-    return colors[phase as keyof typeof colors] || 'bg-gray-500'
+    return colors[phase as keyof typeof colors] as any || 'phase-analyze'
   }
 
-  const getChangeIndicator = (value: number, isPositive: boolean = true) => {
-    if (value === 0) return null
-    const isGood = isPositive ? value > 0 : value < 0
-    return (
-      <span className={`flex items-center text-sm ${isGood ? 'text-green-600' : 'text-red-600'}`}>
-        {value > 0 ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        {Math.abs(value)}%
-      </span>
-    )
+  const getMedalColor = (index: number) => {
+    if (index === 0) return 'from-yellow-400 to-amber-500' // Gold
+    if (index === 1) return 'from-gray-300 to-gray-400' // Silver
+    if (index === 2) return 'from-orange-400 to-orange-600' // Bronze
+    return 'from-gray-200 to-gray-300'
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold">Loading analytics...</h2>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Mountain className="w-16 h-16 mx-auto text-summit-blue animate-pulse" />
+          <h2 className="text-xl font-semibold font-display">Loading analytics...</h2>
+          <div className="space-y-2 max-w-xs mx-auto">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4 mx-auto" />
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-summit-blue/5 via-background to-summit-gold/5">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-card shadow-sm border-b sticky top-0 z-50 backdrop-blur-sm bg-card/95">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <h1 className="text-2xl font-bold font-display text-foreground flex items-center">
+                <Crown className="w-6 h-6 mr-2 text-summit-gold" />
                 Clinic Analytics Dashboard
               </h1>
-              <p className="text-gray-600">Monitor your clinic's performance and patient outcomes</p>
+              <p className="text-muted-foreground">Monitor your clinic's performance and patient outcomes</p>
+            </motion.div>
+            <div className="relative">
+              <Button
+                variant="outline"
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="rounded-2xl"
+              >
+                <Briefcase className="w-4 h-4 mr-2" />
+                Owner Menu
+              </Button>
+              <AnimatePresence>
+                {showUserMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute right-0 mt-2 w-64 bg-card rounded-xl shadow-lg border p-4 space-y-3"
+                  >
+                    <ThemeToggle />
+                    <hr className="border-border" />
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        await supabase.auth.signOut()
+                        router.push('/auth/login')
+                      }}
+                      className="w-full rounded-xl"
+                    >
+                      Sign Out
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-            <Button
-              variant="outline"
-              onClick={async () => {
-                await supabase.auth.signOut()
-                router.push('/auth/login')
-              }}
-            >
-              Sign Out
-            </Button>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                <Users className="inline w-4 h-4 mr-1" />
-                Total Patients
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{clinicStats.totalPatients}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {clinicStats.activePatients} active this week
-              </p>
-            </CardContent>
-          </Card>
+        <motion.div
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
+        >
+          <motion.div variants={item}>
+            <AnimatedCard className="bg-gradient-to-br from-summit-blue/10 to-transparent" delay={0}>
+              <AnimatedCardHeader className="pb-2">
+                <AnimatedCardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                  <Users className="w-4 h-4 mr-1 text-summit-blue" />
+                  Total Patients
+                </AnimatedCardTitle>
+              </AnimatedCardHeader>
+              <AnimatedCardContent>
+                <motion.p
+                  className="text-3xl font-bold font-display text-summit-blue"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+                >
+                  {clinicStats.totalPatients}
+                </motion.p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {clinicStats.activePatients} active this week
+                </p>
+              </AnimatedCardContent>
+            </AnimatedCard>
+          </motion.div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                <Activity className="inline w-4 h-4 mr-1" />
-                Completion Rate
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{clinicStats.averageCompletionRate}%</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {clinicStats.totalExercisesCompleted} / {clinicStats.totalExercisesAssigned} exercises
-              </p>
-            </CardContent>
-          </Card>
+          <motion.div variants={item}>
+            <AnimatedCard className="bg-gradient-to-br from-green-500/10 to-transparent" delay={0.1}>
+              <AnimatedCardHeader className="pb-2">
+                <AnimatedCardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                  <Activity className="w-4 h-4 mr-1 text-green-500" />
+                  Completion Rate
+                </AnimatedCardTitle>
+              </AnimatedCardHeader>
+              <AnimatedCardContent>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
+                >
+                  <p className="text-3xl font-bold font-display text-green-600">
+                    {clinicStats.averageCompletionRate}%
+                  </p>
+                  <ProgressBar
+                    value={clinicStats.averageCompletionRate}
+                    color="success"
+                    size="sm"
+                    className="mt-2"
+                    animated
+                  />
+                </motion.div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {clinicStats.totalExercisesCompleted} / {clinicStats.totalExercisesAssigned} exercises
+                </p>
+              </AnimatedCardContent>
+            </AnimatedCard>
+          </motion.div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                <Trophy className="inline w-4 h-4 mr-1" />
-                Avg. Patient Points
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{clinicStats.averagePatientPoints}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Engagement score
-              </p>
-            </CardContent>
-          </Card>
+          <motion.div variants={item}>
+            <AnimatedCard className="bg-gradient-to-br from-summit-gold/20 to-transparent" delay={0.2}>
+              <AnimatedCardHeader className="pb-2">
+                <AnimatedCardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                  <Trophy className="w-4 h-4 mr-1 text-summit-gold" />
+                  Avg. Patient Points
+                </AnimatedCardTitle>
+              </AnimatedCardHeader>
+              <AnimatedCardContent>
+                <motion.p
+                  className="text-3xl font-bold font-display text-summit-gold-dark"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
+                >
+                  {clinicStats.averagePatientPoints}
+                </motion.p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Engagement score
+                </p>
+              </AnimatedCardContent>
+            </AnimatedCard>
+          </motion.div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                <Flame className="inline w-4 h-4 mr-1" />
-                Avg. Streak
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{clinicStats.averageStreak} days</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Patient consistency
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+          <motion.div variants={item}>
+            <AnimatedCard className="bg-gradient-to-br from-orange-500/10 to-transparent" delay={0.3}>
+              <AnimatedCardHeader className="pb-2">
+                <AnimatedCardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                  <Flame className="w-4 h-4 mr-1 text-orange-500" />
+                  Avg. Streak
+                </AnimatedCardTitle>
+              </AnimatedCardHeader>
+              <AnimatedCardContent>
+                <motion.p
+                  className="text-3xl font-bold font-display text-orange-600"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.6, type: "spring", stiffness: 200 }}
+                >
+                  {clinicStats.averageStreak} <span className="text-lg font-normal">days</span>
+                </motion.p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Patient consistency
+                </p>
+              </AnimatedCardContent>
+            </AnimatedCard>
+          </motion.div>
+        </motion.div>
 
         {/* Phase Distribution */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Mountain className="w-5 h-5 mr-2" />
-              Patient Phase Distribution
-            </CardTitle>
-            <CardDescription>
-              Track patient progression through recovery phases
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-4 gap-4">
-              {Object.entries(clinicStats.patientsPerPhase).map(([phase, count]) => (
-                <div key={phase} className="text-center">
-                  <div className={`${getPhaseColor(phase)} text-white rounded-lg p-4 mb-2`}>
-                    <p className="text-3xl font-bold">{count}</p>
-                  </div>
-                  <p className="text-sm font-medium capitalize">{phase}</p>
-                  <p className="text-xs text-gray-500">
-                    {clinicStats.totalPatients > 0
-                      ? `${Math.round(count / clinicStats.totalPatients * 100)}%`
-                      : '0%'}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <AnimatedCard className="mb-8" delay={0.4}>
+            <AnimatedCardHeader>
+              <AnimatedCardTitle className="flex items-center font-display">
+                <Mountain className="w-5 h-5 mr-2 text-summit-blue" />
+                Patient Phase Distribution
+              </AnimatedCardTitle>
+              <AnimatedCardDescription>
+                Track patient progression through recovery phases
+              </AnimatedCardDescription>
+            </AnimatedCardHeader>
+            <AnimatedCardContent>
+              <div className="grid grid-cols-4 gap-4">
+                {Object.entries(clinicStats.patientsPerPhase).map(([phase, count], index) => (
+                  <motion.div
+                    key={phase}
+                    className="text-center"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.5 + index * 0.1, type: "spring", stiffness: 200 }}
+                  >
+                    <div className={`bg-${getPhaseColor(phase)} text-white rounded-xl p-6 mb-2 shadow-lg`}>
+                      <motion.p
+                        className="text-4xl font-bold font-display"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: 0.7 + index * 0.1, type: "spring", stiffness: 300 }}
+                      >
+                        {count}
+                      </motion.p>
+                    </div>
+                    <p className="text-sm font-medium capitalize font-display">{phase}</p>
+                    <ProgressBar
+                      value={clinicStats.totalPatients > 0 ? (count / clinicStats.totalPatients) * 100 : 0}
+                      color={getPhaseColor(phase)}
+                      size="sm"
+                      className="mt-2"
+                      animated
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {clinicStats.totalPatients > 0
+                        ? `${Math.round(count / clinicStats.totalPatients * 100)}%`
+                        : '0%'}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </AnimatedCardContent>
+          </AnimatedCard>
+        </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="grid grid-cols-1 md:grid-cols-2 gap-8"
+        >
           {/* Employee Performance */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <UserCheck className="w-5 h-5 mr-2" />
+          <AnimatedCard delay={0.7}>
+            <AnimatedCardHeader>
+              <AnimatedCardTitle className="flex items-center font-display">
+                <UserCheck className="w-5 h-5 mr-2 text-summit-blue" />
                 Employee Performance
-              </CardTitle>
-              <CardDescription>
+              </AnimatedCardTitle>
+              <AnimatedCardDescription>
                 Staff assessment activity and patient load
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {employeePerformance.map(employee => (
-                  <div key={employee.id} className="p-3 border rounded-lg">
+              </AnimatedCardDescription>
+            </AnimatedCardHeader>
+            <AnimatedCardContent>
+              <motion.div
+                className="space-y-3"
+                variants={container}
+                initial="hidden"
+                animate="show"
+              >
+                {employeePerformance.map((employee, index) => (
+                  <motion.div
+                    key={employee.id}
+                    variants={item}
+                    className="p-4 border-2 rounded-xl hover:bg-muted/50 transition-all"
+                  >
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-semibold">{employee.name}</p>
-                        <div className="flex gap-4 mt-1">
-                          <span className="text-sm text-gray-600">
+                        <p className="font-semibold font-display">{employee.name}</p>
+                        <div className="flex gap-4 mt-2">
+                          <Badge variant="outline" className="rounded-full">
+                            <Users className="w-3 h-3 mr-1" />
                             {employee.patientCount} patients
-                          </span>
-                          <span className="text-sm text-gray-600">
+                          </Badge>
+                          <Badge variant="outline" className="rounded-full">
+                            <ClipboardList className="w-3 h-3 mr-1" />
                             {employee.assessmentCount} assessments
-                          </span>
+                          </Badge>
                         </div>
                       </div>
                       {employee.lastAssessmentDate && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs rounded-full">
                           Last: {new Date(employee.lastAssessmentDate).toLocaleDateString()}
                         </Badge>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
                 {employeePerformance.length === 0 && (
-                  <p className="text-center text-gray-500 py-4">No employee data available</p>
+                  <p className="text-center text-muted-foreground py-4">No employee data available</p>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+              </motion.div>
+            </AnimatedCardContent>
+          </AnimatedCard>
 
           {/* Top Performers */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Award className="w-5 h-5 mr-2" />
+          <AnimatedCard delay={0.8}>
+            <AnimatedCardHeader>
+              <AnimatedCardTitle className="flex items-center font-display">
+                <Award className="w-5 h-5 mr-2 text-summit-gold" />
                 Top Performing Patients
-              </CardTitle>
-              <CardDescription>
+              </AnimatedCardTitle>
+              <AnimatedCardDescription>
                 Most engaged patients by points earned
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
+              </AnimatedCardDescription>
+            </AnimatedCardHeader>
+            <AnimatedCardContent>
+              <motion.div
+                className="space-y-3"
+                variants={container}
+                initial="hidden"
+                animate="show"
+              >
                 {topPatients.map((patient, index) => (
-                  <div key={patient.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <motion.div
+                    key={patient.id}
+                    variants={item}
+                    whileHover={{ scale: 1.02 }}
+                    className="flex items-center justify-between p-4 border-2 rounded-xl hover:bg-muted/50 transition-all"
+                  >
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold
-                        ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-600' : 'bg-gray-300'}`}>
-                        {index + 1}
-                      </div>
+                      <motion.div
+                        className={`w-10 h-10 rounded-full bg-gradient-to-br ${getMedalColor(index)} flex items-center justify-center text-white font-bold shadow-lg`}
+                        whileHover={{ rotate: 360 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        {index < 3 ? <Trophy className="w-5 h-5" /> : index + 1}
+                      </motion.div>
                       <div>
-                        <p className="font-semibold">{patient.name}</p>
+                        <p className="font-semibold font-display">{patient.name}</p>
                         <div className="flex gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs rounded-full">
                             <Trophy className="w-3 h-3 mr-1" />
                             {patient.points} pts
                           </Badge>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs rounded-full">
                             <Flame className="w-3 h-3 mr-1" />
                             {patient.streak} days
                           </Badge>
-                          <Badge className={`${getPhaseColor(patient.phase)} text-white text-xs`}>
+                          <Badge className={`bg-${getPhaseColor(patient.phase)} text-white text-xs rounded-full`}>
                             {patient.phase}
                           </Badge>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
                 {topPatients.length === 0 && (
-                  <p className="text-center text-gray-500 py-4">No patient data available</p>
+                  <p className="text-center text-muted-foreground py-4">No patient data available</p>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </motion.div>
+            </AnimatedCardContent>
+          </AnimatedCard>
+        </motion.div>
 
         {/* Summary Stats */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <BarChart3 className="w-5 h-5 mr-2" />
-              Clinic Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <ClipboardList className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold">{clinicStats.totalAssessments}</p>
-                <p className="text-sm text-gray-600">Total Assessments</p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9 }}
+        >
+          <AnimatedCard className="mt-8" delay={1}>
+            <AnimatedCardHeader>
+              <AnimatedCardTitle className="flex items-center font-display">
+                <BarChart3 className="w-5 h-5 mr-2 text-summit-blue" />
+                Clinic Summary
+              </AnimatedCardTitle>
+            </AnimatedCardHeader>
+            <AnimatedCardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { icon: ClipboardList, value: clinicStats.totalAssessments, label: 'Total Assessments', color: 'text-purple-600' },
+                  { icon: Target, value: clinicStats.totalExercisesAssigned, label: 'Exercises Assigned', color: 'text-blue-600' },
+                  { icon: UserCheck, value: clinicStats.totalEmployees, label: 'Staff Members', color: 'text-green-600' },
+                  { icon: Calendar, value: `${Math.round(clinicStats.activePatients / Math.max(clinicStats.totalPatients, 1) * 100)}%`, label: 'Weekly Active Rate', color: 'text-orange-600' }
+                ].map((stat, index) => (
+                  <motion.div
+                    key={stat.label}
+                    className="text-center p-6 bg-gradient-to-br from-muted/50 to-transparent rounded-xl"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 1.1 + index * 0.1, type: "spring", stiffness: 200 }}
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    <stat.icon className={`w-10 h-10 ${stat.color} mx-auto mb-3`} />
+                    <motion.p
+                      className="text-3xl font-bold font-display"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 1.3 + index * 0.1, type: "spring", stiffness: 300 }}
+                    >
+                      {stat.value}
+                    </motion.p>
+                    <p className="text-sm text-muted-foreground mt-1">{stat.label}</p>
+                  </motion.div>
+                ))}
               </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <Target className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold">{clinicStats.totalExercisesAssigned}</p>
-                <p className="text-sm text-gray-600">Exercises Assigned</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <UserCheck className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold">{clinicStats.totalEmployees}</p>
-                <p className="text-sm text-gray-600">Staff Members</p>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <Calendar className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold">
-                  {Math.round(clinicStats.activePatients / Math.max(clinicStats.totalPatients, 1) * 100)}%
-                </p>
-                <p className="text-sm text-gray-600">Weekly Active Rate</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </AnimatedCardContent>
+          </AnimatedCard>
+        </motion.div>
       </main>
     </div>
   )

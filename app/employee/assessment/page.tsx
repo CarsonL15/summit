@@ -2,12 +2,29 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { AnimatedCard, AnimatedCardContent, AnimatedCardDescription, AnimatedCardHeader, AnimatedCardTitle } from '@/components/ui/animated-card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Save, AlertCircle, CheckCircle } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ProgressBar } from '@/components/ui/progress-bar'
+import {
+  ArrowLeft,
+  Save,
+  AlertCircle,
+  CheckCircle2,
+  ClipboardList,
+  User,
+  Activity,
+  ChevronRight,
+  FileText,
+  Target,
+  Loader2,
+  Info,
+  Mountain
+} from 'lucide-react'
 
 interface Patient {
   id: string
@@ -46,6 +63,73 @@ const initialScores: FMSScores = {
   rotary_stability_right: 0,
 }
 
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 }
+}
+
+const movementPatterns = [
+  {
+    id: 'deep_squat',
+    name: 'Deep Squat',
+    bilateral: false,
+    icon: '🏋️',
+    description: 'Tests bilateral symmetry and functional mobility'
+  },
+  {
+    id: 'hurdle_step',
+    name: 'Hurdle Step',
+    bilateral: true,
+    icon: '🦵',
+    description: 'Assesses stepping and balance'
+  },
+  {
+    id: 'inline_lunge',
+    name: 'Inline Lunge',
+    bilateral: true,
+    icon: '🤸',
+    description: 'Tests hip and ankle mobility'
+  },
+  {
+    id: 'shoulder_mobility',
+    name: 'Shoulder Mobility',
+    bilateral: true,
+    icon: '💪',
+    description: 'Evaluates shoulder range of motion'
+  },
+  {
+    id: 'active_straight_leg_raise',
+    name: 'Active Straight Leg Raise',
+    bilateral: true,
+    icon: '🦿',
+    description: 'Tests hamstring flexibility'
+  },
+  {
+    id: 'trunk_stability_push_up',
+    name: 'Trunk Stability Push-Up',
+    bilateral: false,
+    icon: '🏃',
+    description: 'Assesses core stability'
+  },
+  {
+    id: 'rotary_stability',
+    name: 'Rotary Stability',
+    bilateral: true,
+    icon: '🔄',
+    description: 'Tests multi-plane stability'
+  },
+]
+
 export default function FMSAssessmentPage() {
   const [employee, setEmployee] = useState<any>(null)
   const [patients, setPatients] = useState<Patient[]>([])
@@ -53,7 +137,9 @@ export default function FMSAssessmentPage() {
   const [scores, setScores] = useState<FMSScores>(initialScores)
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
   const [success, setSuccess] = useState(false)
+  const [currentSection, setCurrentSection] = useState(0)
   const router = useRouter()
   const supabase = createClient()
 
@@ -62,35 +148,39 @@ export default function FMSAssessmentPage() {
   }, [])
 
   const fetchData = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/auth/login')
-      return
-    }
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/auth/login')
+        return
+      }
 
-    // Get employee data
-    const { data: employeeData } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single()
+      // Get employee data
+      const { data: employeeData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single()
 
-    if (employeeData?.role !== 'employee' && employeeData?.role !== 'owner') {
-      router.push('/patient')
-      return
-    }
+      if (employeeData?.role !== 'employee' && employeeData?.role !== 'owner') {
+        router.push('/patient')
+        return
+      }
 
-    setEmployee(employeeData)
+      setEmployee(employeeData)
 
-    // Get patients in the same clinic
-    const { data: patientsData } = await supabase
-      .from('users')
-      .select('id, first_name, last_name, email')
-      .eq('clinic_id', employeeData.clinic_id)
-      .eq('role', 'patient')
+      // Get patients in the same clinic
+      const { data: patientsData } = await supabase
+        .from('users')
+        .select('id, first_name, last_name, email')
+        .eq('clinic_id', employeeData.clinic_id)
+        .eq('role', 'patient')
 
-    if (patientsData) {
-      setPatients(patientsData)
+      if (patientsData) {
+        setPatients(patientsData)
+      }
+    } finally {
+      setFetching(false)
     }
   }
 
@@ -110,10 +200,17 @@ export default function FMSAssessmentPage() {
   }
 
   const getScoreColor = (score: number) => {
-    if (score === 0) return 'bg-gray-100 text-gray-600'
-    if (score === 1) return 'bg-red-100 text-red-700'
-    if (score === 2) return 'bg-yellow-100 text-yellow-700'
-    return 'bg-green-100 text-green-700'
+    if (score === 0) return 'bg-gray-500'
+    if (score === 1) return 'bg-destructive'
+    if (score === 2) return 'bg-warning'
+    return 'bg-success'
+  }
+
+  const getScoreLabel = (score: number) => {
+    if (score === 0) return 'Unable'
+    if (score === 1) return 'Poor'
+    if (score === 2) return 'Moderate'
+    return 'Good'
   }
 
   const handleScoreChange = (movement: keyof FMSScores, score: number) => {
@@ -236,353 +333,381 @@ export default function FMSAssessmentPage() {
     }
   }
 
-  const ScoreButton = ({ score, currentScore, onClick }: { score: number; currentScore: number; onClick: () => void }) => (
-    <button
+  const ScoreButton = ({
+    score,
+    currentScore,
+    onClick,
+    size = 'normal'
+  }: {
+    score: number
+    currentScore: number
+    onClick: () => void
+    size?: 'normal' | 'large'
+  }) => (
+    <motion.button
       type="button"
       onClick={onClick}
-      className={`w-10 h-10 rounded-md font-semibold transition-all ${
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      className={`${size === 'large' ? 'w-14 h-14 text-lg' : 'w-12 h-12'} rounded-xl font-semibold transition-all shadow-sm ${
         currentScore === score
-          ? score === 0 ? 'bg-gray-500 text-white'
-          : score === 1 ? 'bg-red-500 text-white'
-          : score === 2 ? 'bg-yellow-500 text-white'
-          : 'bg-green-500 text-white'
-          : 'bg-gray-100 hover:bg-gray-200'
+          ? `${getScoreColor(score)} text-white shadow-lg ring-2 ring-offset-2 ring-offset-background ${
+              score === 0 ? 'ring-gray-500' :
+              score === 1 ? 'ring-destructive' :
+              score === 2 ? 'ring-warning' :
+              'ring-success'
+            }`
+          : 'bg-muted hover:bg-muted/80'
       }`}
     >
       {score}
-    </button>
+    </motion.button>
   )
 
+  if (fetching) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Mountain className="w-16 h-16 mx-auto text-summit-blue animate-pulse" />
+          <h2 className="text-xl font-semibold font-display">Loading assessment...</h2>
+          <div className="space-y-2 max-w-xs mx-auto">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4 mx-auto" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const selectedPatientData = patients.find(p => p.id === selectedPatient)
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-summit-blue/5 via-background to-summit-gold/5">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-card shadow-sm border-b sticky top-0 z-50 backdrop-blur-sm bg-card/95">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => router.push('/employee')}
+              className="rounded-xl"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
               Back
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">FMS Assessment</h1>
-              <p className="text-gray-600">Functional Movement Screen Scoring</p>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3 }}
+              className="flex-1"
+            >
+              <h1 className="text-2xl font-bold font-display text-foreground flex items-center">
+                <ClipboardList className="w-6 h-6 mr-2 text-summit-blue" />
+                FMS Assessment
+              </h1>
+              <p className="text-muted-foreground">Functional Movement Screen Scoring</p>
+            </motion.div>
+            {selectedPatientData && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-right"
+              >
+                <p className="text-sm text-muted-foreground">Assessing</p>
+                <p className="font-semibold font-display">
+                  {selectedPatientData.first_name} {selectedPatientData.last_name}
+                </p>
+              </motion.div>
+            )}
           </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Patient Selection */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Patient Information</CardTitle>
-            <CardDescription>Select the patient for this assessment</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Label htmlFor="patient">Select Patient</Label>
-            <select
-              id="patient"
-              value={selectedPatient}
-              onChange={(e) => setSelectedPatient(e.target.value)}
-              className="w-full mt-1 p-2 border rounded-md"
-            >
-              <option value="">-- Select a patient --</option>
-              {patients.map(patient => (
-                <option key={patient.id} value={patient.id}>
-                  {patient.first_name} {patient.last_name} ({patient.email})
-                </option>
-              ))}
-            </select>
-          </CardContent>
-        </Card>
-
-        {/* Movement Patterns */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Movement Pattern Scoring</CardTitle>
-            <CardDescription>
-              Score each movement from 0-3. Lower scores indicate areas needing correction.
-            </CardDescription>
-            <div className="flex gap-2 mt-2">
-              <Badge className="bg-gray-500 text-white">0 = Unable</Badge>
-              <Badge className="bg-red-500 text-white">1 = Poor</Badge>
-              <Badge className="bg-yellow-500 text-white">2 = Moderate</Badge>
-              <Badge className="bg-green-500 text-white">3 = Good</Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {/* Deep Squat */}
-              <div>
-                <Label className="text-base font-semibold mb-2 block">1. Deep Squat</Label>
-                <div className="flex gap-2">
-                  {[0, 1, 2, 3].map(score => (
-                    <ScoreButton
-                      key={score}
-                      score={score}
-                      currentScore={scores.deep_squat}
-                      onClick={() => handleScoreChange('deep_squat', score)}
-                    />
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <motion.div
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="space-y-6"
+        >
+          {/* Patient Selection */}
+          <motion.div variants={item}>
+            <AnimatedCard delay={0.1}>
+              <AnimatedCardHeader>
+                <AnimatedCardTitle className="font-display flex items-center">
+                  <User className="w-5 h-5 mr-2 text-summit-blue" />
+                  Patient Information
+                </AnimatedCardTitle>
+                <AnimatedCardDescription>Select the patient for this assessment</AnimatedCardDescription>
+              </AnimatedCardHeader>
+              <AnimatedCardContent>
+                <Label htmlFor="patient" className="text-foreground/90 font-medium mb-2 block">
+                  Select Patient
+                </Label>
+                <select
+                  id="patient"
+                  value={selectedPatient}
+                  onChange={(e) => setSelectedPatient(e.target.value)}
+                  className="w-full p-3 border-2 rounded-xl bg-background text-foreground transition-colors focus:border-summit-blue focus:outline-none"
+                >
+                  <option value="">-- Select a patient --</option>
+                  {patients.map(patient => (
+                    <option key={patient.id} value={patient.id}>
+                      {patient.first_name} {patient.last_name} ({patient.email})
+                    </option>
                   ))}
-                </div>
-              </div>
+                </select>
+              </AnimatedCardContent>
+            </AnimatedCard>
+          </motion.div>
 
-              {/* Hurdle Step */}
-              <div>
-                <Label className="text-base font-semibold mb-2 block">2. Hurdle Step</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm mb-1 block">Left</Label>
-                    <div className="flex gap-2">
-                      {[0, 1, 2, 3].map(score => (
-                        <ScoreButton
-                          key={score}
-                          score={score}
-                          currentScore={scores.hurdle_step_left}
-                          onClick={() => handleScoreChange('hurdle_step_left', score)}
-                        />
-                      ))}
-                    </div>
+          {/* Score Legend */}
+          <motion.div variants={item}>
+            <AnimatedCard delay={0.2} className="bg-gradient-to-r from-summit-blue/5 to-summit-gold/5">
+              <AnimatedCardContent className="py-4">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-2">
+                    <Info className="w-5 h-5 text-summit-blue" />
+                    <span className="font-medium text-sm">Scoring Guide:</span>
                   </div>
-                  <div>
-                    <Label className="text-sm mb-1 block">Right</Label>
-                    <div className="flex gap-2">
-                      {[0, 1, 2, 3].map(score => (
-                        <ScoreButton
-                          key={score}
-                          score={score}
-                          currentScore={scores.hurdle_step_right}
-                          onClick={() => handleScoreChange('hurdle_step_right', score)}
-                        />
-                      ))}
-                    </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {[0, 1, 2, 3].map(score => (
+                      <Badge
+                        key={score}
+                        className={`${getScoreColor(score)} text-white px-3 py-1 rounded-full`}
+                      >
+                        {score} = {getScoreLabel(score)}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
-              </div>
+              </AnimatedCardContent>
+            </AnimatedCard>
+          </motion.div>
 
-              {/* Inline Lunge */}
-              <div>
-                <Label className="text-base font-semibold mb-2 block">3. Inline Lunge</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm mb-1 block">Left</Label>
-                    <div className="flex gap-2">
-                      {[0, 1, 2, 3].map(score => (
-                        <ScoreButton
-                          key={score}
-                          score={score}
-                          currentScore={scores.inline_lunge_left}
-                          onClick={() => handleScoreChange('inline_lunge_left', score)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm mb-1 block">Right</Label>
-                    <div className="flex gap-2">
-                      {[0, 1, 2, 3].map(score => (
-                        <ScoreButton
-                          key={score}
-                          score={score}
-                          currentScore={scores.inline_lunge_right}
-                          onClick={() => handleScoreChange('inline_lunge_right', score)}
-                        />
-                      ))}
-                    </div>
-                  </div>
+          {/* Movement Patterns */}
+          <motion.div variants={item}>
+            <AnimatedCard delay={0.3}>
+              <AnimatedCardHeader>
+                <AnimatedCardTitle className="font-display flex items-center">
+                  <Activity className="w-5 h-5 mr-2 text-summit-blue" />
+                  Movement Pattern Scoring
+                </AnimatedCardTitle>
+                <AnimatedCardDescription>
+                  Score each movement from 0-3. Lower scores indicate areas needing correction.
+                </AnimatedCardDescription>
+
+                {/* Progress Bar */}
+                <div className="mt-4">
+                  <ProgressBar
+                    value={calculateTotalScore()}
+                    max={21}
+                    color="primary"
+                    showLabel
+                    size="lg"
+                    animated
+                  />
                 </div>
-              </div>
+              </AnimatedCardHeader>
 
-              {/* Shoulder Mobility */}
-              <div>
-                <Label className="text-base font-semibold mb-2 block">4. Shoulder Mobility</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm mb-1 block">Left</Label>
-                    <div className="flex gap-2">
-                      {[0, 1, 2, 3].map(score => (
-                        <ScoreButton
-                          key={score}
-                          score={score}
-                          currentScore={scores.shoulder_mobility_left}
-                          onClick={() => handleScoreChange('shoulder_mobility_left', score)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm mb-1 block">Right</Label>
-                    <div className="flex gap-2">
-                      {[0, 1, 2, 3].map(score => (
-                        <ScoreButton
-                          key={score}
-                          score={score}
-                          currentScore={scores.shoulder_mobility_right}
-                          onClick={() => handleScoreChange('shoulder_mobility_right', score)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <AnimatedCardContent>
+                <motion.div
+                  className="space-y-6"
+                  variants={container}
+                  initial="hidden"
+                  animate="show"
+                >
+                  {movementPatterns.map((pattern, index) => (
+                    <motion.div
+                      key={pattern.id}
+                      variants={item}
+                      className="p-4 bg-muted/30 rounded-xl border-2 border-transparent hover:border-summit-blue/20 transition-all"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <Label className="text-lg font-semibold font-display flex items-center gap-2">
+                              <span className="text-2xl">{pattern.icon}</span>
+                              {index + 1}. {pattern.name}
+                            </Label>
+                            <p className="text-sm text-muted-foreground mt-1">{pattern.description}</p>
+                          </div>
+                        </div>
 
-              {/* Active Straight Leg Raise */}
-              <div>
-                <Label className="text-base font-semibold mb-2 block">5. Active Straight Leg Raise</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm mb-1 block">Left</Label>
-                    <div className="flex gap-2">
-                      {[0, 1, 2, 3].map(score => (
-                        <ScoreButton
-                          key={score}
-                          score={score}
-                          currentScore={scores.active_straight_leg_raise_left}
-                          onClick={() => handleScoreChange('active_straight_leg_raise_left', score)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm mb-1 block">Right</Label>
-                    <div className="flex gap-2">
-                      {[0, 1, 2, 3].map(score => (
-                        <ScoreButton
-                          key={score}
-                          score={score}
-                          currentScore={scores.active_straight_leg_raise_right}
-                          onClick={() => handleScoreChange('active_straight_leg_raise_right', score)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Trunk Stability Push-Up */}
-              <div>
-                <Label className="text-base font-semibold mb-2 block">6. Trunk Stability Push-Up</Label>
-                <div className="flex gap-2">
-                  {[0, 1, 2, 3].map(score => (
-                    <ScoreButton
-                      key={score}
-                      score={score}
-                      currentScore={scores.trunk_stability_push_up}
-                      onClick={() => handleScoreChange('trunk_stability_push_up', score)}
-                    />
+                        {!pattern.bilateral ? (
+                          // Single scoring
+                          <div className="flex gap-2">
+                            {[0, 1, 2, 3].map(score => (
+                              <ScoreButton
+                                key={score}
+                                score={score}
+                                currentScore={scores[pattern.id as keyof FMSScores] as number}
+                                onClick={() => handleScoreChange(pattern.id as keyof FMSScores, score)}
+                                size="large"
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          // Bilateral scoring
+                          <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium flex items-center gap-2">
+                                <ChevronRight className="w-4 h-4 text-summit-blue" />
+                                Left Side
+                              </Label>
+                              <div className="flex gap-2">
+                                {[0, 1, 2, 3].map(score => (
+                                  <ScoreButton
+                                    key={score}
+                                    score={score}
+                                    currentScore={scores[`${pattern.id}_left` as keyof FMSScores] as number}
+                                    onClick={() => handleScoreChange(`${pattern.id}_left` as keyof FMSScores, score)}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium flex items-center gap-2">
+                                <ChevronRight className="w-4 h-4 text-summit-blue" />
+                                Right Side
+                              </Label>
+                              <div className="flex gap-2">
+                                {[0, 1, 2, 3].map(score => (
+                                  <ScoreButton
+                                    key={score}
+                                    score={score}
+                                    currentScore={scores[`${pattern.id}_right` as keyof FMSScores] as number}
+                                    onClick={() => handleScoreChange(`${pattern.id}_right` as keyof FMSScores, score)}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
                   ))}
-                </div>
-              </div>
+                </motion.div>
+              </AnimatedCardContent>
+            </AnimatedCard>
+          </motion.div>
 
-              {/* Rotary Stability */}
-              <div>
-                <Label className="text-base font-semibold mb-2 block">7. Rotary Stability</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm mb-1 block">Left</Label>
-                    <div className="flex gap-2">
-                      {[0, 1, 2, 3].map(score => (
-                        <ScoreButton
-                          key={score}
-                          score={score}
-                          currentScore={scores.rotary_stability_left}
-                          onClick={() => handleScoreChange('rotary_stability_left', score)}
-                        />
-                      ))}
-                    </div>
+          {/* Notes and Summary */}
+          <motion.div variants={item}>
+            <AnimatedCard delay={0.4}>
+              <AnimatedCardHeader>
+                <AnimatedCardTitle className="font-display flex items-center">
+                  <FileText className="w-5 h-5 mr-2 text-summit-blue" />
+                  Assessment Summary
+                </AnimatedCardTitle>
+              </AnimatedCardHeader>
+              <AnimatedCardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="notes" className="text-foreground/90 font-medium mb-2 block">
+                    Notes (Optional)
+                  </Label>
+                  <textarea
+                    id="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="w-full p-3 border-2 rounded-xl bg-background text-foreground transition-colors focus:border-summit-blue focus:outline-none resize-none"
+                    rows={3}
+                    placeholder="Additional observations or notes..."
+                  />
+                </div>
+
+                <motion.div
+                  className="bg-gradient-to-r from-summit-blue/10 to-summit-gold/10 p-6 rounded-xl"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-lg font-semibold font-display flex items-center gap-2">
+                      <Target className="w-5 h-5 text-summit-blue" />
+                      Total FMS Score:
+                    </span>
+                    <motion.span
+                      className="text-3xl font-bold font-display"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200, delay: 0.6 }}
+                    >
+                      {calculateTotalScore()} / 21
+                    </motion.span>
                   </div>
-                  <div>
-                    <Label className="text-sm mb-1 block">Right</Label>
-                    <div className="flex gap-2">
-                      {[0, 1, 2, 3].map(score => (
-                        <ScoreButton
-                          key={score}
-                          score={score}
-                          currentScore={scores.rotary_stability_right}
-                          onClick={() => handleScoreChange('rotary_stability_right', score)}
-                        />
-                      ))}
-                    </div>
-                  </div>
+
+                  {calculateTotalScore() > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.7 }}
+                      className="space-y-2"
+                    >
+                      {calculateTotalScore() <= 10 && (
+                        <Badge className="bg-destructive text-white rounded-full px-3 py-1">
+                          High Priority for Corrective Exercise
+                        </Badge>
+                      )}
+                      {calculateTotalScore() > 10 && calculateTotalScore() <= 14 && (
+                        <Badge className="bg-warning text-white rounded-full px-3 py-1">
+                          Moderate Dysfunction
+                        </Badge>
+                      )}
+                      {calculateTotalScore() > 14 && (
+                        <Badge className="bg-success text-white rounded-full px-3 py-1">
+                          Good Movement Quality
+                        </Badge>
+                      )}
+                    </motion.div>
+                  )}
+                </motion.div>
+
+                <AnimatePresence>
+                  {success && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      className="flex items-center gap-2 p-4 bg-success/10 text-success border border-success/30 rounded-xl"
+                    >
+                      <CheckCircle2 className="w-5 h-5" />
+                      Assessment saved successfully! Redirecting...
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={loading || !selectedPatient || calculateTotalScore() === 0}
+                    className="flex-1 h-12 rounded-xl bg-gradient-to-r from-summit-blue to-summit-blue-light hover:from-summit-blue-light hover:to-summit-blue text-white font-semibold shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Saving Assessment...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-5 h-5 mr-2" />
+                        Save Assessment & Assign Exercises
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push('/employee')}
+                    className="rounded-xl"
+                  >
+                    Cancel
+                  </Button>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Notes and Summary */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Assessment Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="notes">Notes (Optional)</Label>
-              <textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full mt-1 p-2 border rounded-md"
-                rows={3}
-                placeholder="Additional observations or notes..."
-              />
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-semibold">Total FMS Score:</span>
-                <span className="text-2xl font-bold">{calculateTotalScore()} / 21</span>
-              </div>
-              {calculateTotalScore() > 0 && (
-                <div className="mt-2">
-                  {calculateTotalScore() <= 10 && (
-                    <Badge className="bg-red-500 text-white">High Priority for Corrective Exercise</Badge>
-                  )}
-                  {calculateTotalScore() > 10 && calculateTotalScore() <= 14 && (
-                    <Badge className="bg-yellow-500 text-white">Moderate Dysfunction</Badge>
-                  )}
-                  {calculateTotalScore() > 14 && (
-                    <Badge className="bg-green-500 text-white">Good Movement Quality</Badge>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {success && (
-              <div className="flex items-center gap-2 p-3 bg-green-50 text-green-700 rounded-md">
-                <CheckCircle className="w-5 h-5" />
-                Assessment saved successfully!
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <Button
-                onClick={handleSubmit}
-                disabled={loading || !selectedPatient || calculateTotalScore() === 0}
-                className="flex-1"
-              >
-                {loading ? (
-                  'Saving...'
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Assessment & Assign Exercises
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => router.push('/employee')}
-              >
-                Cancel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              </AnimatedCardContent>
+            </AnimatedCard>
+          </motion.div>
+        </motion.div>
       </main>
     </div>
   )
