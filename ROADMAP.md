@@ -1,10 +1,16 @@
-# Summit - Development Roadmap
+# Summit Monorepo - Development Roadmap
 
-## 🎯 Current Status: Visual Polish Complete (v0.3.0)
+**Last Updated**: November 12, 2025
 
-**Last Updated**: October 31, 2025
+This roadmap covers both applications in the monorepo: the production-ready Clinic App and the in-development Fire App.
 
-All MVP features plus Phase 2 enhancements and visual polish are complete. The platform now has immediate exercise visibility, proper FMS scoring, exercise customization, professional patient onboarding, and comprehensive animations with dark/light mode.
+## 🏥 Clinic App Status: Production Ready (v0.3.0)
+
+All MVP features plus Phase 2 enhancements and visual polish are complete. The platform has immediate exercise visibility, proper FMS scoring, exercise customization, professional patient onboarding, and comprehensive animations with dark/light mode.
+
+## 🚒 Fire App Status: MVP Development (v0.1.0)
+
+Initial structure and demo pages complete. Database schema designed, seed data created, authentication flow ready. Firefighter dashboard built with mock data.
 
 ## ✅ Phase 2 Completed (October 31, 2025)
 
@@ -24,32 +30,61 @@ All MVP features plus Phase 2 enhancements and visual polish are complete. The p
 
 ---
 
-## 📋 Next Steps (Priority Order)
+---
 
-### Phase 3: Polish & Advanced Features
+## 🔥 Fire App - Immediate Priorities
 
-#### High Priority (Next Session)
-1. **Framer Motion Animations** ⏱️ 2-3 hours
-   - Add page transitions
-   - Smooth card animations
-   - Mountain progress animations
-   - Streak milestone celebrations
-   - Phase advancement animations
+### MVP Completion for Fire Chief Demo (7-day target)
 
-2. **Video Upload/Integration** ⏱️ 3-4 hours
+#### Day 1-2: Database Integration ⏱️ 8 hours
+- [ ] Replace mock data with real Supabase queries
+- [ ] Implement authentication flow
+- [ ] Connect firefighter dashboard to database
+- [ ] Test with demo accounts
+
+#### Day 3-4: Fire Chief Dashboard ⏱️ 8 hours
+- [ ] Build chief dashboard layout
+- [ ] Station-wide analytics cards
+- [ ] Department leaderboard
+- [ ] FMS assessment interface
+- [ ] Series assignment tool
+
+#### Day 5: Exercise Flow ⏱️ 6 hours
+- [ ] Exercise detail pages
+- [ ] Completion tracking
+- [ ] Points awarding system
+- [ ] Series progression logic
+
+#### Day 6: Polish ⏱️ 4 hours
+- [ ] Mobile responsive design
+- [ ] Loading states
+- [ ] Error handling
+- [ ] Demo data verification
+
+#### Day 7: Testing & Demo Prep ⏱️ 4 hours
+- [ ] End-to-end testing
+- [ ] Demo script preparation
+- [ ] Backup plans for demo
+- [ ] Deploy to Vercel
+
+---
+
+## 📋 Clinic App - Next Steps
+
+### Phase 3: Advanced Features
+
+#### High Priority
+1. **Video Upload/Integration** ⏱️ 3-4 hours
    - Supabase Storage setup for videos
    - Video upload interface for exercises
    - Video player component
-   - Or: YouTube/Vimeo URL integration
-   - Thumbnail generation
+   - YouTube/Vimeo URL integration option
 
-3. **Email Notifications** ⏱️ 4-5 hours
+2. **Email Notifications** ⏱️ 4-5 hours
    - Resend or SendGrid integration
    - Welcome email template
-   - Password reset emails
    - Exercise assignment notifications
    - Streak reminder emails
-   - Achievement celebration emails
 
 #### Medium Priority
 4. **Phase Progression Logic** ⏱️ 3-4 hours
