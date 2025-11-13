@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
+import { AnimatedCard, AnimatedCardContent, AnimatedCardDescription, AnimatedCardHeader, AnimatedCardTitle } from '@/components/ui/animated-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ProgressBar } from '@/components/ui/progress-bar'
 import {
   ArrowLeft,
   User,
@@ -19,7 +23,10 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  Mountain
+  Mountain,
+  TrendingUp,
+  Award,
+  Zap
 } from 'lucide-react'
 
 interface PatientDetails {
@@ -191,36 +198,71 @@ export default function PatientDetailPage() {
 
   const getPhaseColor = (phase: string) => {
     const colors = {
-      analyze: 'bg-blue-500',
-      mobilize: 'bg-green-500',
-      stabilize: 'bg-yellow-500',
-      optimize: 'bg-purple-500',
+      analyze: 'bg-phase-analyze',
+      mobilize: 'bg-phase-mobilize',
+      stabilize: 'bg-phase-stabilize',
+      optimize: 'bg-phase-optimize',
     }
     return colors[phase as keyof typeof colors] || 'bg-gray-500'
   }
 
+  const getPhaseGradient = (phase: string) => {
+    const gradients = {
+      analyze: 'from-phase-analyze to-phase-analyze-dark',
+      mobilize: 'from-phase-mobilize to-phase-mobilize-dark',
+      stabilize: 'from-phase-stabilize to-phase-stabilize-dark',
+      optimize: 'from-phase-optimize to-phase-optimize-dark',
+    }
+    return gradients[phase as keyof typeof gradients] || 'from-gray-500 to-gray-600'
+  }
+
   const getActivityStatus = (lastActivity: string | null) => {
-    if (!lastActivity) return { label: 'Inactive', color: 'bg-gray-500' }
+    if (!lastActivity) return { label: 'Inactive', color: 'bg-gray-500', icon: AlertCircle }
     const daysSince = Math.floor(
       (Date.now() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24)
     )
-    if (daysSince === 0) return { label: 'Active Today', color: 'bg-green-500' }
-    if (daysSince <= 3) return { label: 'Recently Active', color: 'bg-yellow-500' }
-    return { label: `${daysSince} days ago`, color: 'bg-gray-500' }
+    if (daysSince === 0) return { label: 'Active Today', color: 'bg-success', icon: Zap }
+    if (daysSince <= 3) return { label: 'Recently Active', color: 'bg-warning', icon: Activity }
+    return { label: `${daysSince} days ago`, color: 'bg-gray-500', icon: Clock }
   }
 
   const getScoreColor = (score: number) => {
-    if (score === 0) return 'text-gray-600'
-    if (score === 1) return 'text-red-600'
-    if (score === 2) return 'text-yellow-600'
-    return 'text-green-600'
+    if (score === 0) return 'text-muted-foreground'
+    if (score === 1) return 'text-destructive'
+    if (score === 2) return 'text-warning'
+    return 'text-success'
+  }
+
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  }
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold">Loading patient data...</h2>
+      <div className="min-h-screen bg-gradient-to-br from-summit-blue/5 via-background to-summit-gold/5">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center space-y-4">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 200 }}
+              className="w-20 h-20 mx-auto bg-gradient-to-br from-summit-blue to-summit-blue-light rounded-2xl flex items-center justify-center"
+            >
+              <Mountain className="w-10 h-10 text-white animate-pulse" />
+            </motion.div>
+            <h2 className="text-xl font-semibold text-muted-foreground">Loading patient data...</h2>
+          </div>
         </div>
       </div>
     )
@@ -228,13 +270,22 @@ export default function PatientDetailPage() {
 
   if (!patient) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-gradient-to-br from-summit-blue/5 via-background to-summit-gold/5 flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center space-y-4"
+        >
+          <AlertCircle className="w-16 h-16 mx-auto text-destructive" />
           <h2 className="text-xl font-semibold">Patient not found</h2>
-          <Button onClick={() => router.push('/employee')} className="mt-4">
+          <Button
+            onClick={() => router.push('/employee')}
+            className="mt-4 bg-gradient-to-r from-summit-blue to-summit-blue-light hover:from-summit-blue-light hover:to-summit-blue"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Dashboard
           </Button>
-        </div>
+        </motion.div>
       </div>
     )
   }
@@ -247,243 +298,401 @@ export default function PatientDetailPage() {
     : 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-summit-blue/5 via-background to-summit-gold/5">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-summit-blue/5 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-summit-gold/5 rounded-full blur-3xl" />
+      </div>
+
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <motion.header
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="relative backdrop-blur-sm bg-background/80 shadow-sm border-b"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => router.push('/employee')}
+              className="rounded-xl hover:bg-summit-blue/10"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
               Back
             </Button>
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-display font-bold bg-gradient-to-r from-summit-blue to-summit-blue-light bg-clip-text text-transparent">
                 {patient.first_name} {patient.last_name}
               </h1>
-              <p className="text-gray-600">{patient.email}</p>
+              <p className="text-muted-foreground">{patient.email}</p>
             </div>
             <Button
               onClick={() => router.push('/employee/assessment')}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="rounded-xl bg-gradient-to-r from-summit-blue to-summit-blue-light hover:from-summit-blue-light hover:to-summit-blue text-white"
             >
               <ClipboardList className="w-4 h-4 mr-2" />
               New Assessment
             </Button>
           </div>
         </div>
-      </header>
+      </motion.header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Patient Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                <Mountain className="inline w-4 h-4 mr-1" />
-                Current Phase
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Badge className={`${getPhaseColor(progress?.phase || 'analyze')} text-white`}>
-                {progress?.phase?.toUpperCase() || 'ANALYZE'}
-              </Badge>
-            </CardContent>
-          </Card>
+        <motion.div
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
+        >
+          <motion.div variants={item}>
+            <AnimatedCard className="h-full border-2 hover:border-summit-blue/30 transition-colors">
+              <AnimatedCardHeader className="pb-2">
+                <AnimatedCardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                  <Mountain className="w-4 h-4 mr-2 text-summit-blue" />
+                  Current Phase
+                </AnimatedCardTitle>
+              </AnimatedCardHeader>
+              <AnimatedCardContent>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+                >
+                  <Badge className={`${getPhaseColor(progress?.phase || 'analyze')} text-white px-3 py-1 text-sm rounded-xl`}>
+                    {progress?.phase?.toUpperCase() || 'ANALYZE'}
+                  </Badge>
+                </motion.div>
+              </AnimatedCardContent>
+            </AnimatedCard>
+          </motion.div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                <Trophy className="inline w-4 h-4 mr-1" />
-                Total Points
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{progress?.points || 0}</p>
-            </CardContent>
-          </Card>
+          <motion.div variants={item}>
+            <AnimatedCard className="h-full border-2 hover:border-summit-gold/30 transition-colors">
+              <AnimatedCardHeader className="pb-2">
+                <AnimatedCardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                  <Trophy className="w-4 h-4 mr-2 text-summit-gold" />
+                  Total Points
+                </AnimatedCardTitle>
+              </AnimatedCardHeader>
+              <AnimatedCardContent>
+                <motion.p
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
+                  className="text-2xl font-bold bg-gradient-to-r from-summit-gold to-summit-gold-dark bg-clip-text text-transparent"
+                >
+                  {progress?.points || 0}
+                </motion.p>
+              </AnimatedCardContent>
+            </AnimatedCard>
+          </motion.div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                <Flame className="inline w-4 h-4 mr-1" />
-                Current Streak
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{progress?.streak_days || 0} days</p>
-            </CardContent>
-          </Card>
+          <motion.div variants={item}>
+            <AnimatedCard className="h-full border-2 hover:border-destructive/30 transition-colors">
+              <AnimatedCardHeader className="pb-2">
+                <AnimatedCardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                  <Flame className="w-4 h-4 mr-2 text-destructive" />
+                  Current Streak
+                </AnimatedCardTitle>
+              </AnimatedCardHeader>
+              <AnimatedCardContent>
+                <motion.p
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, delay: 0.4 }}
+                  className="text-2xl font-bold text-destructive"
+                >
+                  {progress?.streak_days || 0}
+                  <span className="text-sm text-muted-foreground ml-2">days</span>
+                </motion.p>
+              </AnimatedCardContent>
+            </AnimatedCard>
+          </motion.div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                <Activity className="inline w-4 h-4 mr-1" />
-                Activity Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Badge className={`${activityStatus.color} text-white`}>
-                {activityStatus.label}
-              </Badge>
-            </CardContent>
-          </Card>
-        </div>
+          <motion.div variants={item}>
+            <AnimatedCard className="h-full border-2 hover:border-success/30 transition-colors">
+              <AnimatedCardHeader className="pb-2">
+                <AnimatedCardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                  <Activity className="w-4 h-4 mr-2 text-success" />
+                  Activity Status
+                </AnimatedCardTitle>
+              </AnimatedCardHeader>
+              <AnimatedCardContent>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, delay: 0.5 }}
+                  className="flex items-center gap-2"
+                >
+                  <activityStatus.icon className="w-4 h-4" />
+                  <Badge className={`${activityStatus.color} text-white px-3 py-1 text-sm rounded-xl`}>
+                    {activityStatus.label}
+                  </Badge>
+                </motion.div>
+              </AnimatedCardContent>
+            </AnimatedCard>
+          </motion.div>
+        </motion.div>
 
         {/* Progress Stats */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Exercise Progress</CardTitle>
-            <CardDescription>
-              Overall completion and engagement metrics
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600">{completionRate}%</div>
-                <p className="text-sm text-gray-600 mt-1">Completion Rate</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {completedExercises} of {assignments.length} exercises
-                </p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <AnimatedCard className="mb-8 border-2">
+            <AnimatedCardHeader>
+              <AnimatedCardTitle className="flex items-center text-2xl font-display">
+                <TrendingUp className="w-5 h-5 mr-2 text-summit-blue" />
+                Exercise Progress
+              </AnimatedCardTitle>
+              <AnimatedCardDescription>
+                Overall completion and engagement metrics
+              </AnimatedCardDescription>
+            </AnimatedCardHeader>
+            <AnimatedCardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, delay: 0.6 }}
+                  className="text-center space-y-2"
+                >
+                  <div className="relative">
+                    <div className="text-4xl font-bold bg-gradient-to-r from-summit-blue to-summit-blue-light bg-clip-text text-transparent">
+                      {completionRate}%
+                    </div>
+                    <ProgressBar
+                      value={completionRate}
+                      max={100}
+                      className="mt-2"
+                      color="primary"
+                      size="sm"
+                    />
+                  </div>
+                  <p className="text-sm font-medium text-foreground">Completion Rate</p>
+                  <p className="text-xs text-muted-foreground">
+                    {completedExercises} of {assignments.length} exercises
+                  </p>
+                </motion.div>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, delay: 0.7 }}
+                  className="text-center space-y-2"
+                >
+                  <div className="text-4xl font-bold bg-gradient-to-r from-success to-success-dark bg-clip-text text-transparent">
+                    {progress?.total_exercises_completed || 0}
+                  </div>
+                  <p className="text-sm font-medium text-foreground">Total Completed</p>
+                  <p className="text-xs text-muted-foreground">All-time exercises</p>
+                </motion.div>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, delay: 0.8 }}
+                  className="text-center space-y-2"
+                >
+                  <div className="text-2xl font-bold bg-gradient-to-r from-phase-optimize to-phase-optimize-dark bg-clip-text text-transparent">
+                    {Math.floor((Date.now() - new Date(patient.created_at).getTime()) / (1000 * 60 * 60 * 24))}
+                  </div>
+                  <p className="text-sm font-medium text-foreground">Days Active</p>
+                  <p className="text-xs text-muted-foreground">
+                    Since {new Date(patient.created_at).toLocaleDateString()}
+                  </p>
+                </motion.div>
               </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-green-600">
-                  {progress?.total_exercises_completed || 0}
-                </div>
-                <p className="text-sm text-gray-600 mt-1">Total Completed</p>
-                <p className="text-xs text-gray-500 mt-1">All-time exercises</p>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-purple-600">
-                  {new Date(patient.created_at).toLocaleDateString()}
-                </div>
-                <p className="text-sm text-gray-600 mt-1">Member Since</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {Math.floor((Date.now() - new Date(patient.created_at).getTime()) / (1000 * 60 * 60 * 24))} days
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </AnimatedCardContent>
+          </AnimatedCard>
+        </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.9 }}
+          className="grid grid-cols-1 md:grid-cols-2 gap-8"
+        >
           {/* FMS Assessment History */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <ClipboardList className="w-5 h-5 mr-2" />
+          <AnimatedCard className="border-2">
+            <AnimatedCardHeader>
+              <AnimatedCardTitle className="flex items-center text-xl font-display">
+                <ClipboardList className="w-5 h-5 mr-2 text-summit-blue" />
                 Assessment History
-              </CardTitle>
-              <CardDescription>
+              </AnimatedCardTitle>
+              <AnimatedCardDescription>
                 FMS scores and trends over time
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </AnimatedCardDescription>
+            </AnimatedCardHeader>
+            <AnimatedCardContent>
               <div className="space-y-3 max-h-96 overflow-y-auto">
-                {assessments.map((assessment) => (
-                  <div key={assessment.id} className="p-3 border rounded-lg">
-                    <div className="flex justify-between items-start mb-2">
+                {assessments.map((assessment, index) => (
+                  <motion.div
+                    key={assessment.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 1 + index * 0.1 }}
+                    className="p-4 border-2 rounded-xl hover:border-summit-blue/30 transition-colors"
+                  >
+                    <div className="flex justify-between items-start mb-3">
                       <div>
-                        <p className="font-semibold">
-                          Total Score: {assessment.total_score}/21
-                        </p>
-                        <p className="text-xs text-gray-500">
+                        <div className="flex items-center gap-2">
+                          <p className="text-lg font-bold">
+                            Score: {assessment.total_score}/21
+                          </p>
+                          <ProgressBar
+                            value={assessment.total_score}
+                            max={21}
+                            className="w-20"
+                            color={assessment.total_score >= 14 ? "success" : assessment.total_score >= 10 ? "warning" : "primary"}
+                            size="sm"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
                           {new Date(assessment.created_at).toLocaleDateString()}
                         </p>
                       </div>
-                      <Badge variant="outline" className="text-xs">
-                        By {assessment.users.first_name} {assessment.users.last_name}
+                      <Badge variant="outline" className="text-xs rounded-xl">
+                        {assessment.users.first_name} {assessment.users.last_name}
                       </Badge>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-xs">
-                      <span className={getScoreColor(assessment.deep_squat)}>
-                        Deep Squat: {assessment.deep_squat}
+                      <span className={`${getScoreColor(assessment.deep_squat)} font-medium`}>
+                        🏋️ Squat: {assessment.deep_squat}
                       </span>
-                      <span className={getScoreColor(Math.min(assessment.hurdle_step_left, assessment.hurdle_step_right))}>
-                        Hurdle Step: {Math.min(assessment.hurdle_step_left, assessment.hurdle_step_right)}
+                      <span className={`${getScoreColor(Math.min(assessment.hurdle_step_left, assessment.hurdle_step_right))} font-medium`}>
+                        🦵 Hurdle: {Math.min(assessment.hurdle_step_left, assessment.hurdle_step_right)}
                       </span>
-                      <span className={getScoreColor(Math.min(assessment.inline_lunge_left, assessment.inline_lunge_right))}>
-                        Inline Lunge: {Math.min(assessment.inline_lunge_left, assessment.inline_lunge_right)}
+                      <span className={`${getScoreColor(Math.min(assessment.inline_lunge_left, assessment.inline_lunge_right))} font-medium`}>
+                        🤸 Lunge: {Math.min(assessment.inline_lunge_left, assessment.inline_lunge_right)}
                       </span>
-                      <span className={getScoreColor(Math.min(assessment.shoulder_mobility_left, assessment.shoulder_mobility_right))}>
-                        Shoulder: {Math.min(assessment.shoulder_mobility_left, assessment.shoulder_mobility_right)}
+                      <span className={`${getScoreColor(Math.min(assessment.shoulder_mobility_left, assessment.shoulder_mobility_right))} font-medium`}>
+                        💪 Shoulder: {Math.min(assessment.shoulder_mobility_left, assessment.shoulder_mobility_right)}
                       </span>
-                      <span className={getScoreColor(Math.min(assessment.active_straight_leg_raise_left, assessment.active_straight_leg_raise_right))}>
-                        ASLR: {Math.min(assessment.active_straight_leg_raise_left, assessment.active_straight_leg_raise_right)}
+                      <span className={`${getScoreColor(Math.min(assessment.active_straight_leg_raise_left, assessment.active_straight_leg_raise_right))} font-medium`}>
+                        🦿 ASLR: {Math.min(assessment.active_straight_leg_raise_left, assessment.active_straight_leg_raise_right)}
                       </span>
-                      <span className={getScoreColor(assessment.trunk_stability_push_up)}>
-                        Trunk: {assessment.trunk_stability_push_up}
+                      <span className={`${getScoreColor(assessment.trunk_stability_push_up)} font-medium`}>
+                        🏃 Trunk: {assessment.trunk_stability_push_up}
                       </span>
                     </div>
                     {assessment.notes && (
-                      <p className="text-xs text-gray-600 mt-2 italic">
-                        Note: {assessment.notes}
+                      <p className="text-xs text-muted-foreground mt-3 italic bg-muted/50 p-2 rounded-lg">
+                        📝 {assessment.notes}
                       </p>
                     )}
-                  </div>
+                  </motion.div>
                 ))}
                 {assessments.length === 0 && (
-                  <p className="text-center text-gray-500 py-8">
-                    No assessments yet
-                  </p>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center py-12"
+                  >
+                    <ClipboardList className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">
+                      No assessments yet
+                    </p>
+                    <Button
+                      onClick={() => router.push('/employee/assessment')}
+                      className="mt-4 rounded-xl"
+                      variant="outline"
+                    >
+                      Conduct First Assessment
+                    </Button>
+                  </motion.div>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </AnimatedCardContent>
+          </AnimatedCard>
 
           {/* Recent Exercises */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Target className="w-5 h-5 mr-2" />
+          <AnimatedCard className="border-2">
+            <AnimatedCardHeader>
+              <AnimatedCardTitle className="flex items-center text-xl font-display">
+                <Target className="w-5 h-5 mr-2 text-summit-gold" />
                 Recent Exercises
-              </CardTitle>
-              <CardDescription>
+              </AnimatedCardTitle>
+              <AnimatedCardDescription>
                 Assigned exercises and completion status
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </AnimatedCardDescription>
+            </AnimatedCardHeader>
+            <AnimatedCardContent>
               <div className="space-y-3 max-h-96 overflow-y-auto">
-                {assignments.slice(0, 10).map((assignment) => (
-                  <div key={assignment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                {assignments.slice(0, 10).map((assignment, index) => (
+                  <motion.div
+                    key={assignment.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 1 + index * 0.1 }}
+                    className="flex items-center justify-between p-4 border-2 rounded-xl hover:border-summit-gold/30 transition-colors"
+                  >
                     <div className="flex-1">
-                      <p className="font-medium text-sm">{assignment.exercises.name}</p>
-                      <p className="text-xs text-gray-600">
-                        {assignment.exercises.sets} sets × {assignment.exercises.reps} reps
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Due: {new Date(assignment.due_date).toLocaleDateString()}
-                      </p>
+                      <p className="font-semibold text-sm">{assignment.exercises.name}</p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-muted-foreground flex items-center">
+                          <Award className="w-3 h-3 mr-1" />
+                          {assignment.exercises.sets} sets × {assignment.exercises.reps} reps
+                        </span>
+                        <span className="text-xs text-muted-foreground flex items-center">
+                          <Calendar className="w-3 h-3 mr-1" />
+                          {new Date(assignment.due_date).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge
-                        className={`${getPhaseColor(assignment.phase)} text-white text-xs`}
+                        className={`bg-gradient-to-r ${getPhaseGradient(assignment.phase)} text-white text-xs px-2 py-0.5 rounded-xl`}
                       >
                         {assignment.phase}
                       </Badge>
                       {assignment.exercise_completions.length > 0 ? (
-                        <CheckCircle className="w-5 h-5 text-green-500" />
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: "spring", stiffness: 300 }}
+                        >
+                          <CheckCircle className="w-5 h-5 text-success" />
+                        </motion.div>
                       ) : new Date(assignment.due_date) < new Date() ? (
-                        <AlertCircle className="w-5 h-5 text-red-500" />
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: "spring", stiffness: 300 }}
+                        >
+                          <AlertCircle className="w-5 h-5 text-destructive" />
+                        </motion.div>
                       ) : (
-                        <Clock className="w-5 h-5 text-gray-400" />
+                        <Clock className="w-5 h-5 text-muted-foreground" />
                       )}
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
                 {assignments.length === 0 && (
-                  <p className="text-center text-gray-500 py-8">
-                    No exercises assigned yet
-                  </p>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center py-12"
+                  >
+                    <Target className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">
+                      No exercises assigned yet
+                    </p>
+                    <Button
+                      onClick={() => router.push('/employee/assessment')}
+                      className="mt-4 rounded-xl"
+                      variant="outline"
+                    >
+                      Start with Assessment
+                    </Button>
+                  </motion.div>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </AnimatedCardContent>
+          </AnimatedCard>
+        </motion.div>
       </main>
     </div>
   )

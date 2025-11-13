@@ -2,19 +2,31 @@
 
 A comprehensive web application that gamifies rehabilitation exercises for chiropractic clinics, transforming manual Excel-based FMS assessments into an engaging digital experience.
 
-## 🏔️ Project Status: Phase 2 In Progress
+## 🏔️ Project Status: Visual Polish Complete
 
-**Current Version**: v0.2.0 (Phase 2)
+**Current Version**: v0.3.0 (Visual Polish)
 **Last Updated**: October 31, 2025
-**Status**: ✅ MVP Complete + Phase 2 Enhancements
+**Status**: ✅ MVP Complete + Phase 2 Enhancements + Visual Polish
 
 ## Overview
 
 Summit helps chiropractic clinics digitize their Functional Movement Screen (FMS) assessment process and automatically assign corrective exercises. Patients progress through four phases (Analyze → Mobilize → Stabilize → Optimize) visualized as climbing a mountain to reach the summit.
 
-## What's New in Phase 2 (Oct 31, 2025)
+## What's New in Visual Polish Update (Oct 31, 2025)
 
-### ✅ Completed Today:
+### ✨ Visual Polish Complete:
+1. **Global Dark/Light Mode** - Full theme switching across entire application
+2. **Summit Brand Colors** - Consistent blue (#0d3d62) and gold (#afa586) throughout
+3. **Framer Motion Animations** - Smooth transitions, stagger effects, and micro-interactions
+4. **Animated Components** - AnimatedCard, ProgressBar, and loading skeletons
+5. **Enhanced Landing Page** - Professional hero section with feature showcase
+6. **Polished All Pages** - 11+ pages redesigned with consistent branding
+7. **Theme Toggle** - Easy switching between dark and soft dark modes
+8. **Rounded Corners** - Soft, friendly aesthetic with xl/2xl border radius
+9. **Gradient Effects** - Beautiful gradients using Summit colors for depth
+10. **Progress Indicators** - Custom progress bars with phase-specific colors
+
+### ✅ Phase 2 Completed (Oct 31, 2025):
 1. **Fixed Exercise Visibility** - Patients now see exercises immediately (no 7-day wait)
 2. **Weekly Exercise Programs** - Changed from single due date to date ranges (start_date → end_date)
 3. **Daily Completion Tracking** - Patients can complete exercises multiple times, tracked daily
@@ -24,7 +36,6 @@ Summit helps chiropractic clinics digitize their Functional Movement Screen (FMS
 7. **Custom Exercise Parameters** - Employees can adjust sets, reps, and total completions per exercise
 8. **Adjustable Program Duration** - Employees can set program length (1-30 days)
 9. **Password Reset Flow** - Patients set their own password via email link
-10. **Database Migrations** - 4 migrations applied for new features
 
 ## Features
 
@@ -59,43 +70,50 @@ Summit helps chiropractic clinics digitize their Functional Movement Screen (FMS
 - **Database**: Supabase (PostgreSQL with Row Level Security)
 - **Authentication**: Supabase Auth with password reset
 - **Styling**: Tailwind CSS + shadcn/ui components
+- **Animations**: Framer Motion for smooth transitions
+- **Theme**: next-themes for dark/light mode switching
+- **Icons**: Lucide React
 - **Hosting**: Vercel
-- **Future**: Framer Motion animations, email notifications
+- **Future**: Email notifications, video integration
 
 ## Project Structure
 
 ```
 summit/
 ├── app/
+│   ├── page.tsx                 # ✨ Landing page with animations
 │   ├── auth/
-│   │   ├── login/
-│   │   ├── signup/
-│   │   └── reset-password/      # NEW: Password reset page
+│   │   ├── login/               # ✨ Polished with animations
+│   │   ├── signup/              # ✨ Polished with animations
+│   │   └── reset-password/      # ✨ Polished with animations
 │   ├── patient/
-│   │   ├── page.tsx             # Updated: Weekly program view
-│   │   └── exercise/[id]/       # Updated: Daily completion tracking
+│   │   ├── page.tsx             # ✨ Mountain visualization, theme toggle
+│   │   └── exercise/[id]/       # ✨ Celebration animations
 │   ├── employee/
-│   │   ├── page.tsx             # Updated: Add patient with email
+│   │   ├── page.tsx             # ✨ Polished dashboard
 │   │   ├── assessment/
-│   │   │   ├── page.tsx         # Updated: Fixed FMS scoring
-│   │   │   └── review/[id]/     # NEW: Exercise review page
-│   │   └── patient/[id]/
-│   └── owner/
-├── components/ui/               # shadcn/ui components
+│   │   │   ├── page.tsx         # ✨ Animated scoring interface
+│   │   │   └── review/[id]/     # ✨ Collapsible panels, animations
+│   │   └── patient/[id]/        # ✨ Animated progress cards
+│   └── owner/                   # ✨ Polished analytics
+├── components/
+│   ├── ui/
+│   │   ├── animated-card.tsx    # ✨ NEW: Framer Motion cards
+│   │   ├── progress-bar.tsx     # ✨ NEW: Animated progress
+│   │   ├── skeleton.tsx         # ✨ NEW: Loading states
+│   │   └── [shadcn components]  # shadcn/ui components
+│   └── theme-provider.tsx       # ✨ NEW: Dark mode provider
 ├── lib/supabase/                # Supabase client configuration
 ├── types/
-│   └── supabase.ts              # Updated: New database types
+│   └── supabase.ts              # Database types
 ├── supabase/
 │   ├── schema.sql               # Initial schema
-│   ├── seed.sql                 # Exercise seed data
-│   └── migrations/              # NEW: Database migrations
-│       ├── 002_update_exercise_assignments.sql
-│       ├── 003_fix_fms_total_score.sql
-│       └── 004_add_custom_exercise_parameters.sql
-├── DATABASE_SCHEMA.md           # NEW: Complete schema documentation
+│   └── seed.sql                 # Exercise seed data
+├── DATABASE_SCHEMA.md           # Complete schema documentation
 ├── DEVELOPMENT.md               # Development status
 ├── ROADMAP.md                   # Future plans
-└── MIGRATION_INSTRUCTIONS.md    # Migration guide
+├── STYLE_GUIDE.md               # ✨ NEW: Design system & brand guide
+└── CLAUDE.md                    # AI assistant context
 ```
 
 ## Database Schema
@@ -137,7 +155,6 @@ npm install
    - Go to SQL Editor and run:
      1. `supabase/schema.sql` (initial schema)
      2. `supabase/seed.sql` (exercise data)
-     3. All files in `supabase/migrations/` folder (in order)
 
 4. **Configure environment variables**
    - Copy `.env.local.example` to `.env.local`
@@ -159,7 +176,7 @@ npm run dev
 ```
 
 7. **Open the application**
-   - Navigate to http://localhost:3001
+   - Navigate to http://localhost:3001 (or port shown in terminal)
    - Create accounts for testing different roles
 
 ## FMS Assessment Scoring (FIXED)
@@ -208,12 +225,13 @@ npm run dev
 ## What's Next
 
 ### Immediate Priorities:
-1. **Framer Motion Animations** (2-3 hrs) - Polish the UI
-2. **Video Integration** (3-4 hrs) - Add exercise videos
-3. **Email Notifications** (4-5 hrs) - Automated emails
-4. **Phase Progression Logic** (3-4 hrs) - Auto-advance patients
+1. ✅ ~~**Framer Motion Animations**~~ - COMPLETED! Full visual polish applied
+2. **Video Integration** (3-4 hrs) - Add exercise video player and hosting
+3. **Email Notifications** (4-5 hrs) - Automated emails for assignments/completions
+4. **Phase Progression Logic** (3-4 hrs) - Auto-advance patients between phases
+5. **Mobile Responsiveness** (2-3 hrs) - Final mobile optimization tweaks
 
-### See ROADMAP.md for complete Phase 2+ plans
+### See ROADMAP.md for complete Phase 3+ plans
 
 ## Development Workflow
 
@@ -281,4 +299,4 @@ For questions or support, please contact [your contact information].
 
 **Built with 💪 to help patients reach their summit!**
 
-Last Session: Oct 31, 2025 - Phase 2 exercise customization completed
+**Latest Update**: Oct 31, 2025 - Visual Polish Complete! All pages redesigned with animations and dark mode.

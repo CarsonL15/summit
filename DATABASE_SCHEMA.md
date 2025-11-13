@@ -168,33 +168,6 @@ Badges and milestones earned by patients.
 
 ---
 
-## Migration History
-
-### 001_initial_schema.sql
-- Created all 8 base tables
-- Set up RLS policies
-- Created indexes
-- Added triggers for updated_at columns
-
-### 002_update_exercise_assignments.sql (Oct 31, 2025)
-- Added `start_date`, `end_date`, `daily_target`, `assessment_id` to exercise_assignments
-- Added `completion_date` to exercise_completions (with trigger)
-- Created `daily_exercise_progress` view
-- Migrated existing data
-
-### 003_fix_fms_total_score.sql (Oct 31, 2025)
-- Fixed `total_score` calculation to use LEAST() for bilateral movements
-- Added constraint ensuring total_score ≤ 21
-- Corrected FMS scoring to take lower of left/right scores
-
-### 004_add_custom_exercise_parameters.sql (Oct 31, 2025)
-- Added `custom_sets`, `custom_reps` to exercise_assignments (allows per-assignment customization)
-- Added `total_completions_required` (e.g., 7 for daily, 5 for 5 times total, etc.)
-- Backfilled existing assignments with defaults from exercises table
-- Added check constraints for positive values
-
----
-
 ## Key Business Rules
 
 1. **FMS Scoring:** Bilateral movements take the lower of left/right scores (max 21 total)

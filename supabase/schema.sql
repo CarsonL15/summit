@@ -1,5 +1,6 @@
 -- Summit Database Schema
 -- Gamified Rehab Exercise Management Platform
+-- Version: 1.2.0 (Phase 2 Complete)
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -45,13 +46,13 @@ CREATE TABLE IF NOT EXISTS fms_assessments (
     rotary_stability_right INTEGER CHECK (rotary_stability_right >= 0 AND rotary_stability_right <= 3) NOT NULL,
     total_score INTEGER GENERATED ALWAYS AS (
         deep_squat +
-        hurdle_step_left + hurdle_step_right +
-        inline_lunge_left + inline_lunge_right +
-        shoulder_mobility_left + shoulder_mobility_right +
-        active_straight_leg_raise_left + active_straight_leg_raise_right +
+        LEAST(hurdle_step_left, hurdle_step_right) +
+        LEAST(inline_lunge_left, inline_lunge_right) +
+        LEAST(shoulder_mobility_left, shoulder_mobility_right) +
+        LEAST(active_straight_leg_raise_left, active_straight_leg_raise_right) +
         trunk_stability_push_up +
-        rotary_stability_left + rotary_stability_right
-    ) STORED,
+        LEAST(rotary_stability_left, rotary_stability_right)
+    ) STORED CHECK (total_score <= 21),
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
@@ -71,7 +72,7 @@ CREATE TABLE IF NOT EXISTS exercises (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
--- Exercise Assignments table
+-- Exercise Assignments table (Phase 2: Added date ranges, custom parameters, assessment link)
 CREATE TABLE IF NOT EXISTS exercise_assignments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -79,17 +80,25 @@ CREATE TABLE IF NOT EXISTS exercise_assignments (
     assigned_by UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
     assigned_date DATE NOT NULL DEFAULT CURRENT_DATE,
     due_date DATE NOT NULL,
+    start_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    end_date DATE NOT NULL DEFAULT (CURRENT_DATE + INTERVAL '7 days'),
+    daily_target INTEGER DEFAULT 1,
+    custom_sets INTEGER,
+    custom_reps INTEGER,
+    total_completions_required INTEGER DEFAULT 7 CHECK (total_completions_required > 0),
+    assessment_id UUID REFERENCES fms_assessments(id) ON DELETE SET NULL,
     phase VARCHAR(20) CHECK (phase IN ('analyze', 'mobilize', 'stabilize', 'optimize')) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
--- Exercise Completions table
+-- Exercise Completions table (Phase 2: Added completion_date for daily tracking)
 CREATE TABLE IF NOT EXISTS exercise_completions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     assignment_id UUID NOT NULL REFERENCES exercise_assignments(id) ON DELETE CASCADE,
     patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     completed_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+    completion_date DATE,
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
@@ -119,17 +128,20 @@ CREATE TABLE IF NOT EXISTS achievements (
 );
 
 -- Create indexes for better performance
-CREATE INDEX idx_users_clinic_id ON users(clinic_id);
-CREATE INDEX idx_users_role ON users(role);
-CREATE INDEX idx_fms_assessments_patient_id ON fms_assessments(patient_id);
-CREATE INDEX idx_fms_assessments_employee_id ON fms_assessments(employee_id);
-CREATE INDEX idx_exercise_assignments_patient_id ON exercise_assignments(patient_id);
-CREATE INDEX idx_exercise_assignments_exercise_id ON exercise_assignments(exercise_id);
-CREATE INDEX idx_exercise_assignments_phase ON exercise_assignments(phase);
-CREATE INDEX idx_exercise_completions_patient_id ON exercise_completions(patient_id);
-CREATE INDEX idx_exercise_completions_assignment_id ON exercise_completions(assignment_id);
-CREATE INDEX idx_patient_progress_patient_id ON patient_progress(patient_id);
-CREATE INDEX idx_achievements_patient_id ON achievements(patient_id);
+CREATE INDEX IF NOT EXISTS idx_users_clinic_id ON users(clinic_id);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_fms_assessments_patient_id ON fms_assessments(patient_id);
+CREATE INDEX IF NOT EXISTS idx_fms_assessments_employee_id ON fms_assessments(employee_id);
+CREATE INDEX IF NOT EXISTS idx_exercise_assignments_patient_id ON exercise_assignments(patient_id);
+CREATE INDEX IF NOT EXISTS idx_exercise_assignments_exercise_id ON exercise_assignments(exercise_id);
+CREATE INDEX IF NOT EXISTS idx_exercise_assignments_phase ON exercise_assignments(phase);
+CREATE INDEX IF NOT EXISTS idx_exercise_assignments_assessment_id ON exercise_assignments(assessment_id);
+CREATE INDEX IF NOT EXISTS idx_exercise_assignments_dates ON exercise_assignments(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_exercise_completions_patient_id ON exercise_completions(patient_id);
+CREATE INDEX IF NOT EXISTS idx_exercise_completions_assignment_id ON exercise_completions(assignment_id);
+CREATE INDEX IF NOT EXISTS idx_exercise_completions_date ON exercise_completions(completion_date);
+CREATE INDEX IF NOT EXISTS idx_patient_progress_patient_id ON patient_progress(patient_id);
+CREATE INDEX IF NOT EXISTS idx_achievements_patient_id ON achievements(patient_id);
 
 -- Row Level Security (RLS) Policies
 
@@ -243,6 +255,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to set completion_date from completed_at (Phase 2)
+CREATE OR REPLACE FUNCTION set_completion_date()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.completion_date = DATE(NEW.completed_at);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Create triggers for updated_at columns
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -261,3 +282,8 @@ CREATE TRIGGER update_exercise_assignments_updated_at BEFORE UPDATE ON exercise_
 
 CREATE TRIGGER update_patient_progress_updated_at BEFORE UPDATE ON patient_progress
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Phase 2: Trigger to automatically set completion_date
+CREATE TRIGGER set_completion_date_trigger
+    BEFORE INSERT OR UPDATE ON exercise_completions
+    FOR EACH ROW EXECUTE FUNCTION set_completion_date();
