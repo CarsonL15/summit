@@ -1,79 +1,68 @@
-# Summit Monorepo - AI Assistant Context File
+# Summit - AI Assistant Context File
 
-**Last Updated**: November 12, 2025
-**Version**: 1.0.0 (Monorepo Structure)
+**Last Updated**: October 31, 2025
+**Version**: 0.3.0 (Visual Polish Complete)
 **Purpose**: Quick reference for Claude Code or other AI assistants
 
 ---
 
 ## 🎯 Project Overview
 
-This monorepo contains two separate FMS-based rehabilitation applications:
-
-### 1. Summit Clinic App
 **Summit** is a gamified rehabilitation exercise management platform for chiropractic clinics. It digitizes the Functional Movement Screen (FMS) assessment and automatically assigns corrective exercises with a mountain-climbing progress metaphor.
 
+### Key Concept
 Patients "climb the mountain" through 4 phases (Analyze → Mobilize → Stabilize → Optimize) by completing exercises assigned based on their FMS assessment scores.
-
-### 2. Fire FMS App
-**FireFMS** is a gamified FMS assessment and training platform for fire departments and first responders. It uses a 3-week mini-series program model with department-wide leaderboards and achievement tracking.
 
 ---
 
-## 📂 Monorepo Structure
+## 📂 Project Structure
 
 ```
 summit/
-├── clinic-app/                   # Summit Clinic Application
-│   ├── app/                      # Next.js 14 App Router
-│   │   ├── page.tsx              # ✨ Landing page with animations
-│   │   ├── auth/                 # ✨ Authentication pages
-│   │   ├── patient/              # ✨ Patient dashboard & exercises
-│   │   ├── employee/             # ✨ Employee assessment & management
-│   │   └── owner/                # ✨ Owner analytics
-│   ├── components/               # React components
-│   ├── lib/supabase/            # Supabase client setup
-│   ├── types/                   # TypeScript types
-│   ├── supabase/                # Database schemas
-│   └── package.json             # Port 3001
-│
-├── fire-app/                    # Fire Department FMS Application
-│   ├── app/                     # Next.js 14 App Router
-│   │   ├── page.tsx             # Landing/demo page
-│   │   ├── auth/                # Authentication
-│   │   ├── firefighter/         # Firefighter dashboard
-│   │   └── chief/               # Chief dashboard & analytics
-│   ├── components/              # React components
-│   ├── lib/supabase/           # Supabase client setup
-│   ├── types/                  # TypeScript types
-│   ├── supabase/               # Database schemas
-│   └── package.json            # Port 3002
-│
-├── clinic-docs/                # Clinic app documentation
-│   ├── DATABASE_SCHEMA.md     # ⭐ Database reference
-│   ├── DEVELOPMENT.md         # Development guide
-│   ├── STYLE_GUIDE.md         # Design system
-│   └── MIGRATION_INSTRUCTIONS.md
-│
-├── fire-docs/                  # Fire app documentation
-│   └── DATABASE_SCHEMA.md     # Database reference
-│
-├── CLAUDE.md                   # This file - monorepo guide
-├── ROADMAP.md                  # Future features & timeline
-├── README.md                   # Monorepo overview
-└── .gitignore                  # Excludes node_modules
+├── app/                          # Next.js 14 App Router
+│   ├── page.tsx                  # ✨ Landing page with animations
+│   ├── auth/
+│   │   ├── login/                # ✨ Polished with animations
+│   │   ├── signup/               # ✨ Polished with animations
+│   │   └── reset-password/       # ✨ Polished with animations
+│   ├── patient/
+│   │   ├── page.tsx              # ✨ Mountain visualization, theme toggle
+│   │   └── exercise/[id]/        # ✨ Celebration animations
+│   ├── employee/
+│   │   ├── page.tsx              # ✨ Polished dashboard
+│   │   ├── assessment/
+│   │   │   ├── page.tsx          # ✨ Animated scoring interface
+│   │   │   └── review/[id]/      # ✨ Collapsible panels, animations
+│   │   └── patient/[id]/         # ✨ Animated progress cards
+│   └── owner/                    # ✨ Polished analytics
+├── components/
+│   ├── ui/
+│   │   ├── animated-card.tsx     # ✨ NEW: Framer Motion cards
+│   │   ├── progress-bar.tsx      # ✨ NEW: Animated progress
+│   │   ├── skeleton.tsx          # ✨ NEW: Loading states
+│   │   └── [shadcn]              # shadcn/ui components
+│   └── theme-provider.tsx        # ✨ NEW: Dark mode provider
+├── lib/supabase/                 # Supabase client setup
+├── types/supabase.ts             # Database TypeScript types
+├── supabase/
+│   ├── schema.sql                # Initial database schema
+│   └── seed.sql                  # 40+ exercise seed data
+├── DATABASE_SCHEMA.md            # ⭐ SINGLE SOURCE OF TRUTH for DB
+├── DEVELOPMENT.md                # Development guide & testing
+├── ROADMAP.md                    # Future features & timeline
+├── STYLE_GUIDE.md                # ✨ NEW: Design system & brand guide
+└── README.md                     # Main project documentation
 ```
 
 ---
 
-## 🗄️ Database Schemas
+## 🗄️ Database Schema (8 Tables, 88 Columns)
 
-### Clinic App Database (8 Tables)
-**IMPORTANT**: Check `clinic-docs/DATABASE_SCHEMA.md` before making changes!
+**IMPORTANT**: Always check `DATABASE_SCHEMA.md` before making database changes!
 
-Core Tables:
+### Core Tables:
 1. **clinics** - Clinic information
-2. **users** - User profiles with roles
+2. **users** - User profiles (extends auth.users) with roles
 3. **fms_assessments** - FMS scores (7 patterns, max 21 points)
 4. **exercises** - Exercise library (40+ pre-seeded)
 5. **exercise_assignments** - Patient exercise assignments with date ranges
@@ -81,27 +70,17 @@ Core Tables:
 7. **patient_progress** - Gamification (points, streaks, phase)
 8. **achievements** - Earned badges
 
-### Fire App Database (9 Tables)
-**IMPORTANT**: Check `fire-docs/DATABASE_SCHEMA.md` before making changes!
-
-Core Tables:
-1. **stations** - Fire stations/departments
-2. **users** - Firefighters, chiefs, admins
-3. **fms_scores** - FMS assessment results
-4. **series** - 3-week mini-series programs
-5. **exercises** - Exercise library
-6. **series_exercises** - Exercises in each series week
-7. **series_assignments** - User series assignments
-8. **exercise_completions** - Completion tracking
-9. **achievements** - Badges and milestones
+### Key Database Rules:
+- **FMS Scoring**: Bilateral movements use LOWER of L/R scores (max 21 total)
+- **Date Ranges**: Exercises use `start_date` and `end_date` (not single `due_date`)
+- **Daily Tracking**: `completion_date` tracks daily completions via trigger
+- **Custom Parameters**: `custom_sets`, `custom_reps`, `total_completions_required` per assignment
 
 ---
 
 ## 🔑 Key Business Logic
 
-### Clinic App Logic
-
-**FMS Assessment Flow:**
+### FMS Assessment Flow:
 1. Employee conducts 7-pattern FMS assessment
 2. Bilateral movements scored (take lower of L/R)
 3. Scores ≤1 trigger **1 exercise per category** (~5-7 total)
@@ -109,27 +88,18 @@ Core Tables:
 5. Employee adjusts sets/reps/program duration
 6. Patient sees exercises immediately
 
-**Exercise Completion:**
+### Exercise Completion:
 - Patients can complete exercises **multiple times per day**
 - **10 points** awarded only on **FIRST daily completion**
 - Subsequent completions same day = 0 points (no double-dipping)
 - Streak maintained by completing ANY exercise each day
 
-### Fire App Logic
-
-**FMS Assessment Flow:**
-1. Chief/Admin conducts FMS assessment
-2. Assigns appropriate 3-week mini-series based on weak areas
-3. Series automatically progresses through weeks
-4. Points awarded for completions (10 per exercise)
-5. Department leaderboard updates in real-time
-
-**Mini-Series Model:**
-- 3-week progressive programs targeting specific areas
-- Week 1: Foundation/Mobility
-- Week 2: Strength/Stability
-- Week 3: Integration/Advanced
-- Auto-progression to next week after completion
+### Patient Onboarding:
+1. Employee clicks "Add New Patient"
+2. System generates temp password (user never sees it)
+3. Patient receives **password reset email**
+4. Patient sets own password via reset link
+5. Patient auto-assigned to employee's clinic
 
 ---
 
@@ -160,23 +130,15 @@ Core Tables:
 ## 📋 Common Commands
 
 ```bash
-# Clinic App Development
-cd clinic-app
-npm install          # Install dependencies
+# Development
 npm run dev          # Start dev server (http://localhost:3001)
+
+# Production
 npm run build        # Build for production
 npm start            # Start production server
 
-# Fire App Development
-cd fire-app
-npm install          # Install dependencies
-npm run dev          # Start dev server (http://localhost:3002)
-npm run build        # Build for production
-npm start            # Start production server
-
-# Git Workflow
-git checkout -b clinic/feature-name  # New clinic feature
-git checkout -b fire/feature-name    # New fire feature
+# Linting
+npm run lint         # Run Next.js linter
 ```
 
 ---
@@ -296,57 +258,24 @@ Enter: Deep Squat=3, Hurdle(L=3,R=3), Inline(L=2,R=3), Shoulder(L=3,R=3), ASLR(L
 2. Update `DATABASE_SCHEMA.md`
 
 ### Common File Paths:
-
-**Clinic App:**
-- FMS scoring logic: `clinic-app/app/employee/assessment/page.tsx:100-109`
-- Exercise assignment: `clinic-app/app/employee/assessment/page.tsx:280-300`
-- Review page: `clinic-app/app/employee/assessment/review/[assessmentId]/page.tsx`
-- Patient dashboard: `clinic-app/app/patient/page.tsx:40-60`
-- Exercise completion: `clinic-app/app/patient/exercise/[id]/page.tsx:150-180`
-- Add patient flow: `clinic-app/app/employee/page.tsx:90-120`
-
-**Fire App:**
-- Database schema: `fire-app/supabase/schema.sql`
-- Seed data: `fire-app/supabase/seed.sql` (to be created)
-- Firefighter dashboard: `fire-app/app/firefighter/page.tsx` (to be created)
-- Chief dashboard: `fire-app/app/chief/page.tsx` (to be created)
+- FMS scoring logic: `app/employee/assessment/page.tsx:100-109`
+- Exercise assignment: `app/employee/assessment/page.tsx:280-300`
+- Review page: `app/employee/assessment/review/[assessmentId]/page.tsx`
+- Patient dashboard query: `app/patient/page.tsx:40-60`
+- Exercise completion: `app/patient/exercise/[id]/page.tsx:150-180`
+- Add patient flow: `app/employee/page.tsx:90-120`
 
 ---
 
 ## 🔗 Related Files
 
-**Root Level:**
-- **Monorepo overview**: `README.md`
+- **User-facing docs**: `README.md`
+- **Developer guide**: `DEVELOPMENT.md`
 - **Future plans**: `ROADMAP.md`
+- **Database reference**: `DATABASE_SCHEMA.md` ⭐
+- **Design system**: `STYLE_GUIDE.md` ✨ NEW
 - **This file**: `CLAUDE.md`
 
-**Clinic App Documentation:**
-- **Database reference**: `clinic-docs/DATABASE_SCHEMA.md` ⭐
-- **Developer guide**: `clinic-docs/DEVELOPMENT.md`
-- **Design system**: `clinic-docs/STYLE_GUIDE.md`
-- **Migration guide**: `clinic-docs/MIGRATION_INSTRUCTIONS.md`
-
-**Fire App Documentation:**
-- **Database reference**: `fire-docs/DATABASE_SCHEMA.md`
-- Additional docs to be created as app develops
-
 ---
 
-## 🚀 Next Steps
-
-### Clinic App
-- Ready for client demo
-- Consider video integration
-- Production readiness (RLS, email templates)
-
-### Fire App (Priority)
-1. Create seed data with demo exercises
-2. Build demo login page
-3. Implement firefighter dashboard
-4. Implement chief dashboard with leaderboards
-5. Test mini-series progression
-6. Deploy demo for fire chief meeting
-
----
-
-**Remember**: The apps are completely separate! Different databases, different auth, different deployments. The only shared element is the monorepo structure for code organization.
+**Remember**: This project is fully polished and ready for client demo! The visual design is complete with animations and dark mode. Core functionality works well. Next focus should be on videos or production readiness (email notifications).

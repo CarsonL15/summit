@@ -1,7 +1,7 @@
 {
-  "name": "summit",
-  "version": "1.0.0",
-  "description": "",
+  "name": "summit-clinic",
+  "version": "0.3.0",
+  "description": "Gamified rehabilitation exercise management platform for chiropractic clinics",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3001",
