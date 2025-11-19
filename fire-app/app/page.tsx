@@ -15,13 +15,13 @@ export default function FireLandingPage() {
 
         <div className="relative container mx-auto px-4 py-20">
           {/* Header */}
-          <div className="flex items-center justify-between mb-16">
-            <div className="flex items-center gap-3">
-              <Flame className="h-8 w-8 text-fire-red" />
-              <h1 className="text-2xl font-bold text-white">FireFMS</h1>
+          <div className="flex items-center justify-between mb-8 sm:mb-16">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Flame className="h-6 w-6 sm:h-8 sm:w-8 text-fire-red" />
+              <h1 className="text-xl sm:text-2xl font-bold text-white">FireFMS</h1>
             </div>
             <Link href="/auth/login">
-              <Button variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20">
+              <Button variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20 text-sm sm:text-base">
                 Demo Login
               </Button>
             </Link>
@@ -29,29 +29,29 @@ export default function FireLandingPage() {
 
           {/* Hero Content */}
           <div className="max-w-4xl mx-auto text-center">
-            <Badge className="mb-4 bg-fire-red/20 text-fire-red border-fire-red/30">
+            <Badge className="mb-4 bg-fire-red/20 text-fire-red border-fire-red/30 text-xs sm:text-sm">
               Functional Movement Screen for First Responders
             </Badge>
 
-            <h2 className="text-5xl md:text-6xl font-bold text-white mb-6">
+            <h2 className="text-3xl sm:text-5xl md:text-6xl font-bold text-white mb-4 sm:mb-6">
               Train Like Your Life
-              <span className="block text-fire-gold">Depends On It</span>
+              <span className="block text-fire-gold mt-2">Depends On It</span>
             </h2>
 
-            <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg md:text-xl text-gray-300 mb-6 sm:mb-8 max-w-2xl mx-auto px-4">
               Professional FMS assessments and targeted training programs designed specifically
               for firefighters and first responders. Reduce injuries, improve performance,
               and track department-wide progress.
             </p>
 
-            <div className="flex gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
               <Link href="/auth/login">
-                <Button size="lg" className="bg-fire-red hover:bg-red-700 text-white">
-                  <Shield className="mr-2 h-5 w-5" />
+                <Button size="lg" className="bg-fire-red hover:bg-red-700 text-white w-full sm:w-auto">
+                  <Shield className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                   Try Demo
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20">
+              <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20 w-full sm:w-auto">
                 Learn More
               </Button>
             </div>
@@ -60,18 +60,18 @@ export default function FireLandingPage() {
       </div>
 
       {/* Features Section */}
-      <div className="container mx-auto px-4 py-20">
-        <div className="text-center mb-12">
-          <h3 className="text-3xl font-bold text-white mb-4">
+      <div className="container mx-auto px-4 py-12 sm:py-20">
+        <div className="text-center mb-8 sm:mb-12">
+          <h3 className="text-2xl sm:text-3xl font-bold text-white mb-3 sm:mb-4">
             Built for Fire Departments
           </h3>
-          <p className="text-gray-400 max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-gray-400 max-w-2xl mx-auto px-4">
             Comprehensive movement screening and training system tailored to the unique
             physical demands of firefighting.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           <Card className="bg-white/5 border-white/10 p-6">
             <div className="rounded-lg bg-fire-red/20 w-12 h-12 flex items-center justify-center mb-4">
               <Target className="h-6 w-6 text-fire-red" />
@@ -114,43 +114,43 @@ export default function FireLandingPage() {
       </div>
 
       {/* Stats Section */}
-      <div className="bg-black/30 py-16">
+      <div className="bg-black/30 py-12 sm:py-16">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-center">
             <div>
-              <div className="text-4xl font-bold text-fire-gold mb-2">73%</div>
-              <div className="text-gray-400">Injury Reduction</div>
+              <div className="text-2xl sm:text-4xl font-bold text-fire-gold mb-1 sm:mb-2">73%</div>
+              <div className="text-xs sm:text-sm text-gray-400">Injury Reduction</div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-fire-gold mb-2">3-Week</div>
-              <div className="text-gray-400">Program Cycles</div>
+              <div className="text-2xl sm:text-4xl font-bold text-fire-gold mb-1 sm:mb-2">3-Week</div>
+              <div className="text-xs sm:text-sm text-gray-400">Program Cycles</div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-fire-gold mb-2">10+</div>
-              <div className="text-gray-400">Departments Using</div>
+              <div className="text-2xl sm:text-4xl font-bold text-fire-gold mb-1 sm:mb-2">10+</div>
+              <div className="text-xs sm:text-sm text-gray-400">Departments Using</div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-fire-gold mb-2">500+</div>
-              <div className="text-gray-400">Firefighters Trained</div>
+              <div className="text-2xl sm:text-4xl font-bold text-fire-gold mb-1 sm:mb-2">500+</div>
+              <div className="text-xs sm:text-sm text-gray-400">Firefighters Trained</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* CTA Section */}
-      <div className="container mx-auto px-4 py-20">
-        <Card className="bg-gradient-to-r from-fire-red/20 to-fire-gold/20 border-fire-red/30 p-12">
+      <div className="container mx-auto px-4 py-12 sm:py-20">
+        <Card className="bg-gradient-to-r from-fire-red/20 to-fire-gold/20 border-fire-red/30 p-6 sm:p-8 md:p-12">
           <div className="text-center">
-            <Users className="h-12 w-12 text-fire-gold mx-auto mb-4" />
-            <h3 className="text-3xl font-bold text-white mb-4">
+            <Users className="h-8 w-8 sm:h-12 sm:w-12 text-fire-gold mx-auto mb-3 sm:mb-4" />
+            <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-3 sm:mb-4">
               Ready to Get Your Department Started?
             </h3>
-            <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base text-gray-300 mb-6 sm:mb-8 max-w-2xl mx-auto px-4">
               Try our demo to see how FireFMS can help reduce injuries and improve
               performance across your entire department.
             </p>
             <Link href="/auth/login">
-              <Button size="lg" className="bg-white text-slate-900 hover:bg-gray-100">
+              <Button size="lg" className="bg-white text-slate-900 hover:bg-gray-100 w-full sm:w-auto">
                 Access Demo Dashboard
               </Button>
             </Link>

@@ -144,6 +144,24 @@ CREATE TABLE user_achievements (
   UNIQUE(user_id, achievement_id)
 );
 
+-- Injuries table (tracks injuries and their correlation to FMS scores)
+CREATE TABLE injuries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  injury_type VARCHAR(100) NOT NULL, -- 'strain', 'sprain', 'tear', 'fracture', etc.
+  body_location VARCHAR(100) NOT NULL, -- 'shoulder', 'knee', 'back', 'ankle', etc.
+  injury_date DATE NOT NULL,
+  days_out INTEGER DEFAULT 0, -- Number of days missed from work
+  return_date DATE,
+  fms_score_at_time INTEGER, -- Their FMS score when injured
+  followed_protocol BOOLEAN DEFAULT FALSE, -- Were they doing their exercises?
+  severity VARCHAR(20) CHECK (severity IN ('minor', 'moderate', 'severe')),
+  cost_impact DECIMAL(10,2), -- Estimated cost (medical + lost work)
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_users_station ON users(station_id);
 CREATE INDEX idx_users_role ON users(role);
@@ -153,6 +171,9 @@ CREATE INDEX idx_series_assignments_user ON series_assignments(user_id);
 CREATE INDEX idx_series_assignments_dates ON series_assignments(start_date, end_date);
 CREATE INDEX idx_exercise_completions_user ON exercise_completions(user_id);
 CREATE INDEX idx_exercise_completions_date ON exercise_completions(completed_date);
+CREATE INDEX idx_injuries_user ON injuries(user_id);
+CREATE INDEX idx_injuries_date ON injuries(injury_date);
+CREATE INDEX idx_injuries_fms_score ON injuries(fms_score_at_time);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -177,4 +198,7 @@ CREATE TRIGGER update_exercises_updated_at BEFORE UPDATE ON exercises
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_series_assignments_updated_at BEFORE UPDATE ON series_assignments
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_injuries_updated_at BEFORE UPDATE ON injuries
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
