@@ -380,10 +380,6 @@ export default function FirefighterDashboard() {
 
                   <div className="pt-2">
                     <p className="text-sm text-gray-300 mb-3">{currentSeries.description}</p>
-                    <Button className="w-full bg-fire-red hover:bg-red-700 text-white">
-                      Continue Training
-                      <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
                   </div>
                 </div>
               </CardContent>

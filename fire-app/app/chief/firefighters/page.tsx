@@ -295,11 +295,6 @@ export default function TeamManagement() {
 
                 {/* Actions */}
                 <div className="flex gap-2">
-                  <Link href={`/chief/firefighter/${firefighter.id}`} className="flex-1">
-                    <Button size="sm" variant="outline" className="w-full bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50">
-                      View Profile
-                    </Button>
-                  </Link>
                   {!firefighter.activeSeries && (
                     <Link href={`/chief/series/assign?user=${firefighter.id}`} className="flex-1">
                       <Button size="sm" className="w-full bg-fire-red hover:bg-red-700">
