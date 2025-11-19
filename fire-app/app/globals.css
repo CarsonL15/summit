@@ -73,8 +73,11 @@
   * {
     @apply border-border;
   }
+  html {
+    @apply bg-slate-900;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-slate-900 text-white;
   }
 }
 
