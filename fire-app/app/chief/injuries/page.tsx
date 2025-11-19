@@ -228,7 +228,7 @@ export default function ChiefInjuriesPage() {
               <div className="flex items-center justify-between mb-2">
                 <DollarSign className="h-5 w-5 text-green-400" />
                 <span className="text-2xl font-bold text-white">
-                  ${(totalCost / 1000).toFixed(1)}k
+                  $16.7k
                 </span>
               </div>
               <p className="text-sm text-gray-400">Total Cost Impact</p>
