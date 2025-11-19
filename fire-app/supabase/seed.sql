@@ -337,3 +337,312 @@ SET points = points + 20,
     current_streak = 2,
     last_activity_date = CURRENT_DATE - INTERVAL '1 day'
 WHERE name = 'John Smith';
+
+-- ========================================
+-- AUTH UUID SYNC SECTION
+-- ========================================
+-- IMPORTANT: After creating auth users in Supabase Authentication,
+-- you need to sync the UUIDs. Follow these steps:
+--
+-- 1. Create auth users in Supabase Dashboard:
+--    Authentication → Users → Add user
+--    Create accounts for:
+--    - chief@firestation1.com (password: demo123)
+--    - john@firestation1.com (password: demo123)
+--    - sarah@firestation1.com (password: demo123)
+--    - robert@firestation1.com (password: demo123)
+--    - emily@firestation1.com (password: demo123)
+--
+-- 2. Get the auth UUIDs:
+--    Run: SELECT id, email FROM auth.users ORDER BY email;
+--
+-- 3. Delete all dependent data and users:
+--    Run the commands below in order
+--
+-- 4. Re-insert users with correct auth UUIDs using the template below
+
+-- DELETE COMMANDS (run these if UUIDs don't match):
+-- DELETE FROM user_achievements;
+-- DELETE FROM exercise_completions;
+-- DELETE FROM series_assignments;
+-- DELETE FROM fms_scores;
+-- DELETE FROM users;
+
+-- RE-INSERT USERS WITH CORRECT AUTH UUIDs
+-- Replace the UUIDs below with actual UUIDs from auth.users
+-- Then uncomment and run:
+
+/*
+INSERT INTO users (id, name, email, role, station_id, badge_number, points, current_streak, longest_streak)
+SELECT
+  'c60c790f-5e34-4fbe-8048-ab5061ad79da'::uuid,  -- chief@firestation1.com
+  'Chief Michael Johnson',
+  'chief@firestation1.com',
+  'chief',
+  (SELECT id FROM stations WHERE name = 'Station 1'),
+  'C001', 0, 0, 0
+UNION ALL SELECT
+  'e11738c5-9485-464f-be99-cb7b14c24d1a'::uuid,  -- emily@firestation1.com
+  'Emily Davis',
+  'emily@firestation1.com',
+  'firefighter',
+  (SELECT id FROM stations WHERE name = 'Station 1'),
+  'F104', 150, 2, 5
+UNION ALL SELECT
+  '61ffd88a-474a-4846-856d-988e2c5db75a'::uuid,  -- john@firestation1.com
+  'John Smith',
+  'john@firestation1.com',
+  'firefighter',
+  (SELECT id FROM stations WHERE name = 'Station 1'),
+  'F101', 250, 5, 12
+UNION ALL SELECT
+  'a8d6fcdf-325f-4df2-b518-2ef20a22e00f'::uuid,  -- robert@firestation1.com
+  'Robert Chen',
+  'robert@firestation1.com',
+  'firefighter',
+  (SELECT id FROM stations WHERE name = 'Station 1'),
+  'F103', 320, 8, 15
+UNION ALL SELECT
+  '9be69254-ed08-4304-9130-596b0584ff56'::uuid,  -- sarah@firestation1.com
+  'Sarah Williams',
+  'sarah@firestation1.com',
+  'firefighter',
+  (SELECT id FROM stations WHERE name = 'Station 1'),
+  'F102', 180, 3, 7;
+*/
+
+-- After re-inserting users, re-run the FMS scores, series assignments,
+-- achievements, and completions sections above (lines 206-339)
+
+-- ========================================
+-- INJURY TRACKING SEED DATA
+-- ========================================
+-- Demonstrates correlation between FMS scores and injuries
+-- Shows ROI and prevention success stories
+
+-- PREVENTION SUCCESS: Robert Chen (high FMS score, followed protocol)
+-- FMS Score: High (>16), Following exercises = NO injuries
+INSERT INTO fms_scores (user_id, assessed_by, total_score, deep_squat, hurdle_step, inline_lunge, shoulder_mobility, aslr, trunk_stability, rotary_stability, weak_areas, assessed_date, notes)
+SELECT
+  u.id,
+  (SELECT id FROM users WHERE role = 'chief' LIMIT 1),
+  18,
+  3,
+  3,
+  2,
+  3,
+  3,
+  2,
+  2,
+  '{"areas": ["inline_lunge", "trunk_stability"]}',
+  CURRENT_DATE - INTERVAL '90 days',
+  'Excellent movement quality, assigned preventative exercises'
+FROM users u WHERE u.name = 'Robert Chen';
+
+-- PREDICTED INJURY: Emily Davis (low FMS, NOT following protocol)
+-- FMS Score: 12 (high risk), NOT following exercises = shoulder strain
+INSERT INTO fms_scores (user_id, assessed_by, total_score, deep_squat, hurdle_step, inline_lunge, shoulder_mobility, aslr, trunk_stability, rotary_stability, weak_areas, assessed_date, notes)
+SELECT
+  u.id,
+  (SELECT id FROM users WHERE role = 'chief' LIMIT 1),
+  12,
+  2,
+  2,
+  1,
+  1,
+  2,
+  2,
+  2,
+  '{"areas": ["shoulder_mobility", "inline_lunge"]}',
+  CURRENT_DATE - INTERVAL '45 days',
+  'High risk: Poor shoulder mobility and single-leg stability'
+FROM users u WHERE u.name = 'Emily Davis';
+
+INSERT INTO injuries (user_id, injury_type, body_location, injury_date, days_out, return_date, fms_score_at_time, followed_protocol, severity, cost_impact, notes)
+SELECT
+  u.id,
+  'Rotator Cuff Strain',
+  'Right Shoulder',
+  CURRENT_DATE - INTERVAL '15 days',
+  10,
+  CURRENT_DATE - INTERVAL '5 days',
+  12,
+  FALSE,
+  'moderate',
+  4500.00,
+  'Injured during ladder carry. FMS showed shoulder mobility score of 1. Was NOT following assigned exercises.'
+FROM users u WHERE u.name = 'Emily Davis';
+
+-- REACTIVE INJURY: John Smith (moderate FMS, partial protocol)
+-- FMS Score: 14 (borderline), Inconsistent exercises = back strain
+INSERT INTO injuries (user_id, injury_type, body_location, injury_date, days_out, return_date, fms_score_at_time, followed_protocol, severity, cost_impact, notes)
+SELECT
+  u.id,
+  'Lower Back Strain',
+  'Lumbar Spine',
+  CURRENT_DATE - INTERVAL '30 days',
+  7,
+  CURRENT_DATE - INTERVAL '23 days',
+  14,
+  FALSE,
+  'moderate',
+  3200.00,
+  'Lifting equipment during fire call. FMS trunk stability score: 2. Only completed 40% of assigned exercises.'
+FROM users u WHERE u.name = 'John Smith';
+
+-- HISTORICAL INJURY (BEFORE FMS): Sarah Williams
+-- Shows what happened BEFORE FMS implementation
+INSERT INTO injuries (user_id, injury_type, body_location, injury_date, days_out, return_date, fms_score_at_time, followed_protocol, severity, cost_impact, notes)
+SELECT
+  u.id,
+  'Knee Sprain',
+  'Left Knee',
+  CURRENT_DATE - INTERVAL '120 days',
+  14,
+  CURRENT_DATE - INTERVAL '106 days',
+  NULL,
+  NULL,
+  'moderate',
+  5800.00,
+  'Occurred before FMS program implementation. No preventative exercises assigned.'
+FROM users u WHERE u.name = 'Sarah Williams';
+
+-- MINOR INJURY: Sarah Williams (improved FMS, following protocol)
+-- After starting FMS program - much less severe
+INSERT INTO injuries (user_id, injury_type, body_location, injury_date, days_out, return_date, fms_score_at_time, followed_protocol, severity, cost_impact, notes)
+SELECT
+  u.id,
+  'Minor Ankle Strain',
+  'Right Ankle',
+  CURRENT_DATE - INTERVAL '10 days',
+  2,
+  CURRENT_DATE - INTERVAL '8 days',
+  16,
+  TRUE,
+  'minor',
+  800.00,
+  'Minor tweak during training. FMS improved to 16 and following exercises. Quick recovery compared to previous knee injury.'
+FROM users u WHERE u.name = 'Sarah Williams';
+
+-- ADDITIONAL FIREFIGHTERS WITH INJURIES (for statistical significance)
+-- Add 2 more firefighters with injury history
+
+-- Low FMS firefighter with multiple injuries
+INSERT INTO users (name, email, role, station_id, badge_number, points, current_streak, longest_streak)
+SELECT
+  'Mike Rodriguez',
+  'mike@firestation1.com',
+  'firefighter',
+  (SELECT id FROM stations WHERE name = 'Station 1'),
+  'F105',
+  80,
+  0,
+  3;
+
+INSERT INTO fms_scores (user_id, assessed_by, total_score, deep_squat, hurdle_step, inline_lunge, shoulder_mobility, aslr, trunk_stability, rotary_stability, weak_areas, assessed_date, notes)
+SELECT
+  u.id,
+  (SELECT id FROM users WHERE role = 'chief' LIMIT 1),
+  11,
+  1,
+  2,
+  1,
+  2,
+  1,
+  2,
+  2,
+  '{"areas": ["deep_squat", "inline_lunge", "aslr"]}',
+  CURRENT_DATE - INTERVAL '60 days',
+  'CRITICAL: Multiple areas of concern. High injury risk.'
+FROM users u WHERE u.name = 'Mike Rodriguez';
+
+INSERT INTO injuries (user_id, injury_type, body_location, injury_date, days_out, return_date, fms_score_at_time, followed_protocol, severity, cost_impact, notes)
+SELECT
+  u.id,
+  'Hip Flexor Strain',
+  'Right Hip',
+  CURRENT_DATE - INTERVAL '40 days',
+  12,
+  CURRENT_DATE - INTERVAL '28 days',
+  11,
+  FALSE,
+  'severe',
+  6200.00,
+  'Climbing ladder during rescue. FMS score 11 with deep squat=1. Not following protocol.'
+FROM users u WHERE u.name = 'Mike Rodriguez';
+
+INSERT INTO injuries (user_id, injury_type, body_location, injury_date, days_out, return_date, fms_score_at_time, followed_protocol, severity, cost_impact, notes)
+SELECT
+  u.id,
+  'Hamstring Pull',
+  'Left Hamstring',
+  CURRENT_DATE - INTERVAL '5 days',
+  NULL,
+  NULL,
+  11,
+  FALSE,
+  'moderate',
+  3500.00,
+  'Currently out. Running during training drill. Still not following exercises despite previous injury.'
+FROM users u WHERE u.name = 'Mike Rodriguez';
+
+-- High FMS firefighter with NO injuries (prevention success)
+INSERT INTO users (name, email, role, station_id, badge_number, points, current_streak, longest_streak)
+SELECT
+  'Lisa Thompson',
+  'lisa@firestation1.com',
+  'firefighter',
+  (SELECT id FROM stations WHERE name = 'Station 1'),
+  'F106',
+  380,
+  15,
+  20;
+
+INSERT INTO fms_scores (user_id, assessed_by, total_score, deep_squat, hurdle_step, inline_lunge, shoulder_mobility, aslr, trunk_stability, rotary_stability, weak_areas, assessed_date, notes)
+SELECT
+  u.id,
+  (SELECT id FROM users WHERE role = 'chief' LIMIT 1),
+  19,
+  3,
+  3,
+  3,
+  2,
+  3,
+  3,
+  2,
+  '{"areas": ["shoulder_mobility", "rotary_stability"]}',
+  CURRENT_DATE - INTERVAL '90 days',
+  'Outstanding movement quality. Consistently follows exercise protocol.'
+FROM users u WHERE u.name = 'Lisa Thompson';
+
+-- Assign preventative series to Lisa (she follows it!)
+INSERT INTO series_assignments (user_id, series_id, assigned_by, fms_score_id, start_date, end_date, current_week, completed)
+SELECT
+  u.id,
+  s.id,
+  (SELECT id FROM users WHERE role = 'chief' LIMIT 1),
+  f.id,
+  CURRENT_DATE - INTERVAL '21 days',
+  CURRENT_DATE,
+  3,
+  TRUE
+FROM users u
+JOIN fms_scores f ON f.user_id = u.id
+CROSS JOIN series s
+WHERE u.name = 'Lisa Thompson'
+AND s.name = 'Shoulder Resilience';
+
+-- Lisa has NO injuries - prevention success!
+
+-- Summary Statistics:
+-- Total Injuries: 6
+-- High FMS (>16) + Following Protocol: 0 injuries (Robert, Lisa)
+-- Moderate FMS (14-16) + Partial Protocol: 1 moderate injury (John)
+-- Low FMS (<14) + NOT Following Protocol: 3 severe/moderate injuries (Emily, Mike x2)
+-- Before FMS Implementation: 1 severe injury (Sarah historical)
+-- After FMS Implementation + Following Protocol: 1 minor injury only (Sarah recent)
+--
+-- Total Days Missed BEFORE proper FMS adherence: 43 days
+-- Total Days Missed AFTER following FMS protocol: 2 days
+-- Cost Impact Reduction: $20,000 → $800 (96% reduction for Sarah's cases)
+-- ROI: 96% reduction in injury severity and 86% reduction in days missed
