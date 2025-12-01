@@ -1,17 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { AnimatedCard, AnimatedCardContent, AnimatedCardHeader, AnimatedCardTitle } from '@/components/ui/animated-card'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Label } from '@/components/ui/label'
 import {
-  Shield, Users, ArrowLeft, ArrowRight, Save, AlertCircle,
-  CheckCircle, Activity, ClipboardCheck, Target
+  Activity, Users, ArrowLeft, ArrowRight, Save, AlertCircle,
+  CheckCircle, ClipboardCheck, Target, Shield
 } from 'lucide-react'
 import { Database } from '@/types/database'
 
@@ -97,10 +97,10 @@ const movementPatterns: MovementPattern[] = [
   }
 ]
 
-export default function FMSAssessment() {
-  const [firefighters, setFirefighters] = useState<UserData[]>([])
-  const [selectedFirefighter, setSelectedFirefighter] = useState<string>('')
-  const [selectedFirefighterData, setSelectedFirefighterData] = useState<UserData | null>(null)
+function ClinicFMSAssessmentContent() {
+  const [stationUsers, setStationUsers] = useState<UserData[]>([])
+  const [selectedUser, setSelectedUser] = useState<string>('')
+  const [selectedUserData, setSelectedUserData] = useState<UserData | null>(null)
   const [currentPattern, setCurrentPattern] = useState(0)
   const [scores, setScores] = useState<FMSScores>({
     deep_squat: 0,
@@ -120,13 +120,22 @@ export default function FMSAssessment() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
 
   useEffect(() => {
-    loadFirefighters()
+    loadUsers()
   }, [])
 
-  const loadFirefighters = async () => {
+  // Auto-select user if passed via query param
+  useEffect(() => {
+    const userParam = searchParams.get('user')
+    if (userParam && stationUsers.length > 0) {
+      handleUserSelect(userParam)
+    }
+  }, [searchParams, stationUsers])
+
+  const loadUsers = async () => {
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser()
       if (!authUser) {
@@ -134,41 +143,46 @@ export default function FMSAssessment() {
         return
       }
 
-      // Get chief's station
-      const { data: chief } = await supabase
+      // Get clinic user's station
+      const { data: clinicUser } = await supabase
         .from('users')
         .select('station_id, role')
         .eq('id', authUser.id)
         .single()
 
-      if (!chief || (chief.role !== 'chief' && chief.role !== 'admin')) {
-        router.push('/firefighter')
+      if (!clinicUser || (clinicUser.role !== 'clinic' && clinicUser.role !== 'admin')) {
+        if (clinicUser?.role === 'chief') {
+          router.push('/chief')
+        } else {
+          router.push('/firefighter')
+        }
         return
       }
 
-      // Get all firefighters in station
-      const { data: firefightersData } = await supabase
+      // Get all firefighters AND chiefs in station
+      const { data: usersData } = await supabase
         .from('users')
         .select('*')
-        .eq('station_id', chief.station_id)
-        .eq('role', 'firefighter')
+        .eq('station_id', clinicUser.station_id)
+        .in('role', ['firefighter', 'chief'])
+        .order('role')
         .order('name')
 
-      if (firefightersData) {
-        setFirefighters(firefightersData)
+      if (usersData) {
+        setStationUsers(usersData)
       }
     } catch (error) {
-      console.error('Error loading firefighters:', error)
+      console.error('Error loading users:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleFirefighterSelect = (firefighterId: string) => {
-    setSelectedFirefighter(firefighterId)
-    const firefighter = firefighters.find(f => f.id === firefighterId)
-    setSelectedFirefighterData(firefighter || null)
-    // Reset scores when changing firefighter
+  const handleUserSelect = (userId: string) => {
+    setSelectedUser(userId)
+    const user = stationUsers.find(u => u.id === userId)
+    setSelectedUserData(user || null)
+    // Reset scores when changing user
     setScores({
       deep_squat: 0,
       hurdle_step_left: 0,
@@ -226,7 +240,7 @@ export default function FMSAssessment() {
   }
 
   const handleSaveAssessment = async () => {
-    if (!selectedFirefighter) return
+    if (!selectedUser) return
 
     setSaving(true)
     try {
@@ -235,11 +249,11 @@ export default function FMSAssessment() {
       const totalScore = calculateTotalScore()
       const weakAreas = identifyWeakAreas()
 
-      // Save FMS assessment
+      // Save FMS assessment - store final scores (lower of L/R for bilateral)
       const { data: assessment, error } = await supabase
         .from('fms_scores')
         .insert({
-          user_id: selectedFirefighter,
+          user_id: selectedUser,
           assessed_by: authUser?.id,
           total_score: totalScore,
           deep_squat: scores.deep_squat,
@@ -259,7 +273,7 @@ export default function FMSAssessment() {
       if (error) throw error
 
       // Redirect to review page to assign series
-      router.push(`/chief/assessment/review/${assessment.id}`)
+      router.push(`/clinic/assessment/review/${assessment.id}`)
     } catch (error) {
       console.error('Error saving assessment:', error)
       alert('Failed to save assessment. Please try again.')
@@ -275,7 +289,7 @@ export default function FMSAssessment() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
         <div className="text-center">
-          <Activity className="h-16 w-16 text-fire-gold animate-pulse mx-auto mb-4" />
+          <Activity className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">Loading Assessment...</h2>
           <Skeleton className="h-4 w-48 mx-auto" />
         </div>
@@ -293,7 +307,7 @@ export default function FMSAssessment() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push('/chief')}
+                onClick={() => router.push('/clinic')}
                 className="text-gray-400 hover:text-white"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -301,7 +315,7 @@ export default function FMSAssessment() {
               </Button>
             </div>
             <div className="flex items-center gap-2">
-              <Shield className="h-6 w-6 text-fire-gold" />
+              <Activity className="h-6 w-6 text-blue-400" />
               <h1 className="text-lg font-bold text-white">FMS Assessment</h1>
             </div>
             <div className="text-right">
@@ -313,32 +327,55 @@ export default function FMSAssessment() {
       </header>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Firefighter Selection */}
-        {!selectedFirefighter ? (
+        {/* User Selection */}
+        {!selectedUser ? (
           <AnimatedCard className="bg-white/5 border-white/10">
             <AnimatedCardHeader>
               <AnimatedCardTitle className="text-white flex items-center gap-2">
-                <Users className="h-6 w-6 text-fire-gold" />
-                Select Firefighter
+                <Users className="h-6 w-6 text-blue-400" />
+                Select Person to Assess
               </AnimatedCardTitle>
             </AnimatedCardHeader>
             <AnimatedCardContent>
               <div className="grid gap-3">
-                {firefighters.map((firefighter) => (
+                {stationUsers.map((user) => (
                   <button
-                    key={firefighter.id}
-                    onClick={() => handleFirefighterSelect(firefighter.id)}
+                    key={user.id}
+                    onClick={() => handleUserSelect(user.id)}
                     className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-left"
                   >
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-white">{firefighter.name}</p>
-                        <p className="text-sm text-gray-400">Badge #{firefighter.badge_number}</p>
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-full ${user.role === 'chief' ? 'bg-fire-gold/20' : 'bg-fire-red/20'}`}>
+                          {user.role === 'chief' ? (
+                            <Shield className="h-4 w-4 text-fire-gold" />
+                          ) : (
+                            <Users className="h-4 w-4 text-fire-red" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-white">{user.name}</p>
+                          <div className="flex items-center gap-2 text-sm text-gray-400">
+                            {user.badge_number && <span>Badge #{user.badge_number}</span>}
+                            <Badge
+                              variant="outline"
+                              className={user.role === 'chief' ? 'text-fire-gold border-fire-gold/30' : 'text-gray-400 border-white/20'}
+                            >
+                              {user.role === 'chief' ? 'Chief' : 'Firefighter'}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
-                      <ChevronRight className="h-5 w-5 text-gray-400" />
+                      <ArrowRight className="h-5 w-5 text-gray-400" />
                     </div>
                   </button>
                 ))}
+                {stationUsers.length === 0 && (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 text-gray-600 mx-auto mb-3" />
+                    <p className="text-gray-400">No personnel found in this station</p>
+                  </div>
+                )}
               </div>
             </AnimatedCardContent>
           </AnimatedCard>
@@ -348,18 +385,35 @@ export default function FMSAssessment() {
             <Card className="bg-white/5 border-white/10 mb-6">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-400">Assessing</p>
-                    <p className="text-xl font-bold text-white">{selectedFirefighterData?.name}</p>
-                    <p className="text-sm text-gray-400">Badge #{selectedFirefighterData?.badge_number}</p>
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${selectedUserData?.role === 'chief' ? 'bg-fire-gold/20' : 'bg-fire-red/20'}`}>
+                      {selectedUserData?.role === 'chief' ? (
+                        <Shield className="h-5 w-5 text-fire-gold" />
+                      ) : (
+                        <Users className="h-5 w-5 text-fire-red" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-400">Assessing</p>
+                      <p className="text-xl font-bold text-white">{selectedUserData?.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-gray-400">Badge #{selectedUserData?.badge_number}</p>
+                        <Badge
+                          variant="outline"
+                          className={selectedUserData?.role === 'chief' ? 'text-fire-gold border-fire-gold/30' : 'text-gray-400 border-white/20'}
+                        >
+                          {selectedUserData?.role === 'chief' ? 'Chief' : 'Firefighter'}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setSelectedFirefighter('')}
-                    className="text-white border-white/30 hover:bg-white/10 hover:border-white/50"
+                    onClick={() => setSelectedUser('')}
+                    className="bg-white/5 text-white border-white/30 hover:bg-white/10 hover:border-white/50"
                   >
-                    Change Firefighter
+                    Change Person
                   </Button>
                 </div>
               </CardContent>
@@ -383,14 +437,14 @@ export default function FMSAssessment() {
                         {[0, 1, 2, 3].map(score => (
                           <Button
                             key={score}
-                            variant={scores[pattern.leftField!] === score ? 'default' : 'outline'}
+                            variant="outline"
                             className={`h-16 text-lg font-bold ${
                               scores[pattern.leftField!] === score
-                                ? score === 0 ? 'bg-red-600 hover:bg-red-700' :
-                                  score === 1 ? 'bg-orange-600 hover:bg-orange-700' :
-                                  score === 2 ? 'bg-yellow-600 hover:bg-yellow-700' :
-                                  'bg-green-600 hover:bg-green-700'
-                                : 'text-white border-white/20 hover:bg-white/10'
+                                ? score === 0 ? 'bg-red-600 hover:bg-red-700 text-white border-red-600' :
+                                  score === 1 ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-600' :
+                                  score === 2 ? 'bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600' :
+                                  'bg-green-600 hover:bg-green-700 text-white border-green-600'
+                                : 'bg-white/5 text-white border-white/20 hover:bg-white/10'
                             }`}
                             onClick={() => handleScoreChange(pattern.leftField!, score)}
                           >
@@ -406,14 +460,14 @@ export default function FMSAssessment() {
                         {[0, 1, 2, 3].map(score => (
                           <Button
                             key={score}
-                            variant={scores[pattern.rightField!] === score ? 'default' : 'outline'}
+                            variant="outline"
                             className={`h-16 text-lg font-bold ${
                               scores[pattern.rightField!] === score
-                                ? score === 0 ? 'bg-red-600 hover:bg-red-700' :
-                                  score === 1 ? 'bg-orange-600 hover:bg-orange-700' :
-                                  score === 2 ? 'bg-yellow-600 hover:bg-yellow-700' :
-                                  'bg-green-600 hover:bg-green-700'
-                                : 'text-white border-white/20 hover:bg-white/10'
+                                ? score === 0 ? 'bg-red-600 hover:bg-red-700 text-white border-red-600' :
+                                  score === 1 ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-600' :
+                                  score === 2 ? 'bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600' :
+                                  'bg-green-600 hover:bg-green-700 text-white border-green-600'
+                                : 'bg-white/5 text-white border-white/20 hover:bg-white/10'
                             }`}
                             onClick={() => handleScoreChange(pattern.rightField!, score)}
                           >
@@ -439,14 +493,14 @@ export default function FMSAssessment() {
                       {[0, 1, 2, 3].map(score => (
                         <Button
                           key={score}
-                          variant={scores[pattern.field] === score ? 'default' : 'outline'}
+                          variant="outline"
                           className={`h-16 text-lg font-bold ${
                             scores[pattern.field] === score
-                              ? score === 0 ? 'bg-red-600 hover:bg-red-700' :
-                                score === 1 ? 'bg-orange-600 hover:bg-orange-700' :
-                                score === 2 ? 'bg-yellow-600 hover:bg-yellow-700' :
-                                'bg-green-600 hover:bg-green-700'
-                              : 'text-white border-white/20 hover:bg-white/10'
+                              ? score === 0 ? 'bg-red-600 hover:bg-red-700 text-white border-red-600' :
+                                score === 1 ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-600' :
+                                score === 2 ? 'bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600' :
+                                'bg-green-600 hover:bg-green-700 text-white border-green-600'
+                              : 'bg-white/5 text-white border-white/20 hover:bg-white/10'
                           }`}
                           onClick={() => handleScoreChange(pattern.field, score)}
                         >
@@ -485,7 +539,7 @@ export default function FMSAssessment() {
                 variant="outline"
                 onClick={() => setCurrentPattern(Math.max(0, currentPattern - 1))}
                 disabled={currentPattern === 0}
-                className="text-white border-white/20 hover:bg-white/10"
+                className="bg-white/5 text-white border-white/20 hover:bg-white/10 disabled:opacity-50"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Previous
@@ -497,7 +551,7 @@ export default function FMSAssessment() {
                     key={index}
                     onClick={() => setCurrentPattern(index)}
                     className={`w-2 h-2 rounded-full transition-colors ${
-                      index === currentPattern ? 'bg-fire-gold' :
+                      index === currentPattern ? 'bg-blue-400' :
                       index < currentPattern ? 'bg-green-500' : 'bg-white/20'
                     }`}
                   />
@@ -507,20 +561,16 @@ export default function FMSAssessment() {
               {currentPattern < movementPatterns.length - 1 ? (
                 <Button
                   onClick={() => setCurrentPattern(currentPattern + 1)}
-                  className="bg-fire-gold hover:bg-yellow-600 text-black"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   Next
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
-                <Button
-                  onClick={() => setCurrentPattern(currentPattern + 1)}
-                  className="bg-green-600 hover:bg-green-700"
-                  disabled
-                >
-                  Complete
-                  <CheckCircle className="h-4 w-4 ml-2" />
-                </Button>
+                <div className="flex items-center gap-2 text-green-400 text-sm">
+                  <CheckCircle className="h-4 w-4" />
+                  <span>All patterns scored</span>
+                </div>
               )}
             </div>
 
@@ -574,7 +624,7 @@ export default function FMSAssessment() {
                       id="notes"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      className="w-full h-24 px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-fire-gold"
+                      className="w-full h-24 px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
                       placeholder="Enter any observations or recommendations..."
                     />
                   </div>
@@ -582,7 +632,7 @@ export default function FMSAssessment() {
                   <Button
                     onClick={handleSaveAssessment}
                     disabled={saving}
-                    className="w-full bg-fire-red hover:bg-red-700 text-white"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     {saving ? (
                       <>
@@ -603,5 +653,20 @@ export default function FMSAssessment() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function ClinicFMSAssessment() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
+        <div className="text-center">
+          <Activity className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-white mb-2">Loading Assessment...</h2>
+        </div>
+      </div>
+    }>
+      <ClinicFMSAssessmentContent />
+    </Suspense>
   )
 }

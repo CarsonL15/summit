@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { AnimatedCard, AnimatedCardContent, AnimatedCardHeader, AnimatedCardTitle } from '@/components/ui/animated-card'
@@ -11,19 +11,29 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   UserPlus, ChevronLeft, Mail, User, Shield,
-  CheckCircle, AlertCircle, Loader2
+  CheckCircle, AlertCircle, Loader2, Users, Flame
 } from 'lucide-react'
 
-export default function AddFirefighterPage() {
+function ClinicAddUserPageContent() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [badgeNumber, setBadgeNumber] = useState('')
+  const [selectedRole, setSelectedRole] = useState<'firefighter' | 'chief'>('firefighter')
   const [isCreating, setIsCreating] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
 
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
+
+  // Set role from URL parameter
+  useEffect(() => {
+    const roleParam = searchParams.get('role')
+    if (roleParam === 'chief' || roleParam === 'firefighter') {
+      setSelectedRole(roleParam)
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,26 +42,26 @@ export default function AddFirefighterPage() {
     setSuccess('')
 
     try {
-      // Get current chief/admin user
+      // Get current clinic user
       const { data: { user: authUser } } = await supabase.auth.getUser()
       if (!authUser) {
         router.push('/auth/login')
         return
       }
 
-      // Get chief's profile to get station_id
-      const { data: chiefData } = await supabase
+      // Get clinic user's profile to get station_id
+      const { data: clinicData } = await supabase
         .from('users')
         .select('station_id, role')
         .eq('id', authUser.id)
         .single()
 
-      if (!chiefData || !chiefData.station_id) {
-        throw new Error('Chief profile not found or no station assigned')
+      if (!clinicData || !clinicData.station_id) {
+        throw new Error('Clinic profile not found or no station assigned')
       }
 
-      if (chiefData.role !== 'chief' && chiefData.role !== 'admin') {
-        throw new Error('Only chiefs and admins can create new users')
+      if (clinicData.role !== 'clinic' && clinicData.role !== 'admin') {
+        throw new Error('Only clinic staff can create new users')
       }
 
       // Check if email already exists
@@ -101,8 +111,8 @@ export default function AddFirefighterPage() {
             name: name.trim(),
             email: email.toLowerCase().trim(),
             badge_number: badgeNumber.trim() || null,
-            role: 'firefighter',
-            station_id: chiefData.station_id,
+            role: selectedRole,
+            station_id: clinicData.station_id,
             points: 0,
             current_streak: 0,
             longest_streak: 0
@@ -121,8 +131,8 @@ export default function AddFirefighterPage() {
             name: name.trim(),
             email: email.toLowerCase().trim(),
             badge_number: badgeNumber.trim() || null,
-            role: 'firefighter',
-            station_id: chiefData.station_id,
+            role: selectedRole,
+            station_id: clinicData.station_id,
             points: 0,
             current_streak: 0,
             longest_streak: 0
@@ -131,7 +141,8 @@ export default function AddFirefighterPage() {
         if (insertError) throw insertError
       }
 
-      setSuccess(`Firefighter created successfully! Temporary password: ${tempPassword}`)
+      const roleLabel = selectedRole === 'chief' ? 'Chief' : 'Firefighter'
+      setSuccess(`${roleLabel} created successfully! Temporary password: ${tempPassword}`)
 
       // Clear form
       setName('')
@@ -140,12 +151,12 @@ export default function AddFirefighterPage() {
 
       // Redirect after 3 seconds
       setTimeout(() => {
-        router.push('/chief/firefighters')
+        router.push('/clinic/team')
       }, 3000)
 
     } catch (error: any) {
-      console.error('Error creating firefighter:', error)
-      setError(error.message || 'Failed to create firefighter account')
+      console.error('Error creating user:', error)
+      setError(error.message || 'Failed to create account')
     } finally {
       setIsCreating(false)
     }
@@ -157,15 +168,15 @@ export default function AddFirefighterPage() {
       <header className="sticky top-0 z-50 border-b border-white/10 bg-black/20 backdrop-blur">
         <div className="container mx-auto px-4 py-3 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-4">
-            <Link href="/chief/firefighters">
+            <Link href="/clinic/team">
               <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 Back
               </Button>
             </Link>
             <div>
-              <h1 className="text-base sm:text-xl font-bold text-white">Add New Firefighter</h1>
-              <p className="text-xs sm:text-sm text-gray-400">Create a new firefighter account</p>
+              <h1 className="text-base sm:text-xl font-bold text-white">Add New User</h1>
+              <p className="text-xs sm:text-sm text-gray-400">Create a new account for the station</p>
             </div>
           </div>
         </div>
@@ -180,7 +191,7 @@ export default function AddFirefighterPage() {
               {success}
               <br />
               <span className="text-xs mt-1 block">
-                Please share this password with the firefighter securely.
+                Please share this password with the user securely.
               </span>
             </AlertDescription>
           </Alert>
@@ -197,15 +208,52 @@ export default function AddFirefighterPage() {
         <AnimatedCard className="bg-white/5 border-white/10">
           <AnimatedCardHeader>
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-fire-red/20 rounded-full">
-                <UserPlus className="h-6 w-6 text-fire-red" />
+              <div className={`p-3 rounded-full ${selectedRole === 'chief' ? 'bg-fire-gold/20' : 'bg-fire-red/20'}`}>
+                {selectedRole === 'chief' ? (
+                  <Shield className="h-6 w-6 text-fire-gold" />
+                ) : (
+                  <UserPlus className="h-6 w-6 text-fire-red" />
+                )}
               </div>
-              <AnimatedCardTitle className="text-white">New Firefighter Account</AnimatedCardTitle>
+              <AnimatedCardTitle className="text-white">
+                New {selectedRole === 'chief' ? 'Chief' : 'Firefighter'} Account
+              </AnimatedCardTitle>
             </div>
           </AnimatedCardHeader>
 
           <AnimatedCardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Role Selection */}
+              <div className="space-y-2">
+                <Label className="text-gray-300">
+                  User Role <span className="text-red-400">*</span>
+                </Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    type="button"
+                    variant={selectedRole === 'chief' ? 'default' : 'outline'}
+                    onClick={() => setSelectedRole('chief')}
+                    className={selectedRole === 'chief'
+                      ? 'bg-fire-gold hover:bg-yellow-600 text-black'
+                      : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    Fire Chief
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={selectedRole === 'firefighter' ? 'default' : 'outline'}
+                    onClick={() => setSelectedRole('firefighter')}
+                    className={selectedRole === 'firefighter'
+                      ? 'bg-fire-red hover:bg-red-700 text-white'
+                      : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}
+                  >
+                    <Flame className="mr-2 h-4 w-4" />
+                    Firefighter
+                  </Button>
+                </div>
+              </div>
+
               {/* Name Field */}
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-gray-300">
@@ -245,7 +293,7 @@ export default function AddFirefighterPage() {
                   />
                 </div>
                 <p className="text-xs text-gray-500">
-                  A temporary password will be generated for the new firefighter
+                  A temporary password will be generated for the new user
                 </p>
               </div>
 
@@ -262,7 +310,7 @@ export default function AddFirefighterPage() {
                     value={badgeNumber}
                     onChange={(e) => setBadgeNumber(e.target.value)}
                     className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-500"
-                    placeholder="FF-1234"
+                    placeholder={selectedRole === 'chief' ? 'C-001' : 'FF-1234'}
                     disabled={isCreating}
                   />
                 </div>
@@ -272,16 +320,23 @@ export default function AddFirefighterPage() {
               </div>
 
               {/* Info Box */}
-              <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <div className={`p-4 rounded-lg border ${
+                selectedRole === 'chief' ? 'bg-fire-gold/10 border-fire-gold/20' : 'bg-blue-500/10 border-blue-500/20'
+              }`}>
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-blue-300">
+                  <AlertCircle className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
+                    selectedRole === 'chief' ? 'text-fire-gold' : 'text-blue-400'
+                  }`} />
+                  <div className={`text-sm ${selectedRole === 'chief' ? 'text-fire-gold/90' : 'text-blue-300'}`}>
                     <p className="font-semibold mb-1">Account Creation Process:</p>
                     <ul className="list-disc list-inside space-y-1 text-xs">
                       <li>A temporary password will be automatically generated</li>
-                      <li>The firefighter will be added to your station</li>
+                      <li>The {selectedRole === 'chief' ? 'chief' : 'firefighter'} will be added to your station</li>
                       <li>They can log in immediately using their email and temp password</li>
                       <li>They should change their password after first login</li>
+                      {selectedRole === 'chief' && (
+                        <li className="text-fire-gold">Chiefs will have view-only access to their team</li>
+                      )}
                     </ul>
                   </div>
                 </div>
@@ -292,7 +347,11 @@ export default function AddFirefighterPage() {
                 <Button
                   type="submit"
                   disabled={isCreating || !name.trim() || !email.trim()}
-                  className="flex-1 bg-fire-red hover:bg-red-700"
+                  className={`flex-1 ${
+                    selectedRole === 'chief'
+                      ? 'bg-fire-gold hover:bg-yellow-600 text-black'
+                      : 'bg-fire-red hover:bg-red-700'
+                  }`}
                 >
                   {isCreating ? (
                     <>
@@ -302,11 +361,11 @@ export default function AddFirefighterPage() {
                   ) : (
                     <>
                       <UserPlus className="h-4 w-4 mr-2" />
-                      Create Firefighter
+                      Create {selectedRole === 'chief' ? 'Chief' : 'Firefighter'}
                     </>
                   )}
                 </Button>
-                <Link href="/chief/firefighters" className="flex-1">
+                <Link href="/clinic/team" className="flex-1">
                   <Button
                     type="button"
                     variant="outline"
@@ -329,5 +388,20 @@ export default function AddFirefighterPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ClinicAddUserPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-16 w-16 text-blue-400 animate-spin mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-white mb-2">Loading...</h2>
+        </div>
+      </div>
+    }>
+      <ClinicAddUserPageContent />
+    </Suspense>
   )
 }

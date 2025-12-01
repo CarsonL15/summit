@@ -1,6 +1,6 @@
 # Fire FMS Database Schema
 
-**Last Updated**: November 12, 2025
+**Last Updated**: November 30, 2025
 **Database**: Supabase (PostgreSQL)
 **Purpose**: Schema reference for Fire Department FMS application
 
@@ -41,7 +41,7 @@ Firefighters, chiefs, and admin users.
 | id | UUID | PRIMARY KEY | Unique identifier |
 | name | VARCHAR(255) | NOT NULL | Full name |
 | email | VARCHAR(255) | UNIQUE | Email address |
-| role | VARCHAR(20) | NOT NULL, CHECK | Role (firefighter, chief, admin) |
+| role | VARCHAR(20) | NOT NULL, CHECK | Role (firefighter, chief, admin, clinic) |
 | station_id | UUID | FOREIGN KEY | Reference to stations |
 | badge_number | VARCHAR(50) | | Badge/ID number |
 | points | INTEGER | DEFAULT 0 | Total points earned |

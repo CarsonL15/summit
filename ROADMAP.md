@@ -1,71 +1,125 @@
 # Summit Monorepo - Development Roadmap
 
-**Last Updated**: November 12, 2025
+**Last Updated**: November 30, 2025
 
-This roadmap covers both applications in the monorepo: the production-ready Clinic App and the in-development Fire App.
+This roadmap covers both applications in the monorepo: the production-ready Clinic App and the Fire App (deployed with clinic role feature).
 
 ## 🏥 Clinic App Status: Production Ready (v0.3.0)
 
 All MVP features plus Phase 2 enhancements and visual polish are complete. The platform has immediate exercise visibility, proper FMS scoring, exercise customization, professional patient onboarding, and comprehensive animations with dark/light mode.
 
-## 🚒 Fire App Status: MVP Development (v0.1.0)
+## 🚒 Fire App Status: Deployed with Clinic Feature (v0.2.0)
 
-Initial structure and demo pages complete. Database schema designed, seed data created, authentication flow ready. Firefighter dashboard built with mock data.
-
-## ✅ Phase 2 Completed (October 31, 2025)
-
-### What We Built Today:
-1. ✅ **Fixed Exercise Visibility** - Patients see exercises immediately (no 7-day wait)
-2. ✅ **Weekly Exercise Programs** - Date ranges instead of single due dates
-3. ✅ **Daily Completion Tracking** - Multiple completions per day, points only on first
-4. ✅ **Exercise Review Page** - Full customization after FMS assessment
-5. ✅ **Reduced Exercise Count** - From 10-14 down to ~5-7 exercises
-6. ✅ **Fixed FMS Scoring** - Bilateral movements use LOWER of L/R (max 21)
-7. ✅ **Custom Exercise Parameters** - Adjust sets/reps/total completions per exercise
-8. ✅ **Adjustable Program Duration** - Employee can set program length (1-30 days)
-9. ✅ **Password Reset Flow** - Professional email-based password reset
-10. ✅ **Database Migrations** - 3 migrations + complete documentation
-
-**Status**: Ready for client demo! 🎉
+Core MVP deployed to Vercel. Clinic role feature implemented allowing clinic staff to:
+- Conduct FMS assessments on firefighters AND chiefs
+- Create chief and firefighter accounts with temp passwords
+- Manage station personnel
+- Assign exercise series based on FMS results
 
 ---
 
+## ✅ Fire App - Completed Features
+
+### Phase 1: Core MVP (November 18, 2025)
+1. ✅ Supabase client/server setup with TypeScript types
+2. ✅ Firefighter dashboard with real-time data
+3. ✅ Chief command center with analytics
+4. ✅ Complete FMS assessment workflow
+5. ✅ Series assignment based on FMS scores
+6. ✅ Exercise completion with points/streaks
+7. ✅ Achievement system
+8. ✅ Mobile-responsive across all pages
+9. ✅ Animated cards and loading states
+10. ✅ Login with demo account quick-fill
+11. ✅ Deployed to Vercel
+
+### Phase 2: Clinic Role Feature (November 30, 2025)
+1. ✅ Clinic dashboard (`/clinic`) - Assessment-focused interface
+2. ✅ FMS assessment page - Can assess both chiefs AND firefighters
+3. ✅ Series assignment after assessment
+4. ✅ Team roster management (`/clinic/team`)
+5. ✅ Add chief/firefighter accounts with temp password display
+6. ✅ Chiefs can no longer add firefighters (clinic-only)
+7. ✅ Login redirects for clinic role
+8. ✅ Database constraint updated for 'clinic' role
+9. ✅ Profile page updated for clinic role
+
 ---
 
-## 🔥 Fire App - Immediate Priorities
+## 🔥 Fire App - Remaining Work (Priority Order)
 
-### MVP Completion for Fire Chief Demo (7-day target)
+### High Priority (Before Next Demo)
 
-#### Day 1-2: Database Integration ⏱️ 8 hours
-- [ ] Replace mock data with real Supabase queries
-- [ ] Implement authentication flow
-- [ ] Connect firefighter dashboard to database
-- [ ] Test with demo accounts
+#### 1. Injury Tracking for Clinic ⏱️ 4-5 hours
+- [ ] Create `/clinic/injuries` page
+- [ ] Log injuries during or after FMS assessment
+- [ ] Link injuries to specific users
+- [ ] Track injury type, date, severity, notes
+- [ ] View injury history per firefighter
+- [ ] Chiefs can view (read-only) injury reports
 
-#### Day 3-4: Fire Chief Dashboard ⏱️ 8 hours
-- [ ] Build chief dashboard layout
-- [ ] Station-wide analytics cards
-- [ ] Department leaderboard
-- [ ] FMS assessment interface
-- [ ] Series assignment tool
+#### 2. FMS Assessment History ⏱️ 3-4 hours
+- [ ] View previous FMS assessments for a user
+- [ ] Compare scores over time (score trend chart)
+- [ ] Show improvement/decline indicators
+- [ ] Add "View History" button on team roster
+- [ ] Display last assessment date prominently
 
-#### Day 5: Exercise Flow ⏱️ 6 hours
-- [ ] Exercise detail pages
-- [ ] Completion tracking
-- [ ] Points awarding system
-- [ ] Series progression logic
+#### 3. Password Change Feature ⏱️ 2-3 hours
+- [ ] Add "Change Password" to profile page
+- [ ] First-login password change prompt (optional)
+- [ ] Validate new password requirements
+- [ ] Success confirmation
 
-#### Day 6: Polish ⏱️ 4 hours
-- [ ] Mobile responsive design
-- [ ] Loading states
-- [ ] Error handling
-- [ ] Demo data verification
+### Medium Priority (Post-Demo Enhancements)
 
-#### Day 7: Testing & Demo Prep ⏱️ 4 hours
-- [ ] End-to-end testing
-- [ ] Demo script preparation
-- [ ] Backup plans for demo
-- [ ] Deploy to Vercel
+#### 4. Reassessment Workflow ⏱️ 2-3 hours
+- [ ] "Due for reassessment" indicator (e.g., 90 days since last)
+- [ ] Filter team roster by assessment status
+- [ ] Quick "reassess" action from team list
+- [ ] Reassessment reminders/notifications
+
+#### 5. Clinic Dashboard Analytics ⏱️ 3-4 hours
+- [ ] Assessments completed this week/month
+- [ ] Department-wide average FMS score
+- [ ] Score trends over time (improving vs declining)
+- [ ] Personnel needing attention (low scores, overdue assessments)
+
+#### 6. Series Management for Clinic ⏱️ 2-3 hours
+- [ ] View all active series assignments
+- [ ] Reassign or cancel series
+- [ ] Track series completion rates
+- [ ] See which series are most effective
+
+### Lower Priority (Future Iterations)
+
+#### 7. Multi-Station Support
+- [ ] Clinic assigned to multiple stations
+- [ ] Station selector in clinic dashboard
+- [ ] Cross-station reporting
+- [ ] Separate manager app for multi-station admin
+
+#### 8. Email Notifications
+- [ ] Welcome email with credentials
+- [ ] Assessment completion notifications
+- [ ] Series assignment notifications
+- [ ] Weekly progress summaries
+
+#### 9. Advanced Reporting
+- [ ] Export data to CSV/PDF
+- [ ] Custom date range reports
+- [ ] Injury correlation with FMS scores
+- [ ] ROI metrics (cost savings from injury prevention)
+
+---
+
+## 📋 Demo Accounts
+
+| Role | Email | Password |
+|------|-------|----------|
+| Clinic | clinic@firestation1.com | demo123 |
+| Chief | chief@firestation1.com | demo123 |
+| Firefighter | john@firestation1.com | demo123 |
 
 ---
 
@@ -395,5 +449,5 @@ npm run dev
 
 ---
 
-**Last Updated**: October 31, 2025 (End of Phase 2)
-**Next Review**: After Phase 3 completion
+**Last Updated**: November 30, 2025 (Clinic Role Feature Complete)
+**Next Review**: After Fire App High Priority Features

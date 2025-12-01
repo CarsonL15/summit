@@ -64,7 +64,7 @@ export default function TeamManagement() {
       }
 
       // Check role
-      if (userData.role !== 'chief' && userData.role !== 'admin' && userData.role !== 'pt') {
+      if (userData.role !== 'chief' && userData.role !== 'admin') {
         router.push('/firefighter')
         return
       }
@@ -171,13 +171,9 @@ export default function TeamManagement() {
                 <p className="text-xs sm:text-sm text-gray-400">{firefighters.length} firefighters</p>
               </div>
             </div>
-            <Link href="/chief/firefighters/new">
-              <Button className="bg-fire-red hover:bg-red-700 text-white">
-                <UserPlus className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Add Firefighter</span>
-                <span className="sm:hidden">Add</span>
-              </Button>
-            </Link>
+            <p className="text-xs text-gray-400 hidden sm:block">
+              Contact clinic to add team members
+            </p>
           </div>
         </div>
       </header>
