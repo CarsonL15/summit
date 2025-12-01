@@ -367,7 +367,7 @@ export interface Database {
           id: string
           email: string
           name: string
-          role: 'firefighter' | 'chief' | 'admin' | 'pt'
+          role: 'firefighter' | 'chief' | 'admin' | 'clinic'
           badge_number: string | null
           station_id: string | null
           points: number

@@ -9,9 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  Shield, Users, ArrowLeft, Save, AlertCircle, CheckCircle,
-  Activity, Target, Flame, Calendar, Clock, ChevronRight,
-  Award, Star
+  Activity, ArrowLeft, CheckCircle, Target, Clock, Star
 } from 'lucide-react'
 import { Database } from '@/types/database'
 
@@ -32,7 +30,7 @@ interface SeriesWithExercises extends SeriesData {
   }
 }
 
-export default function SeriesAssignmentReview() {
+export default function ClinicSeriesAssignmentReview() {
   const [assessment, setAssessment] = useState<AssessmentWithUser | null>(null)
   const [availableSeries, setAvailableSeries] = useState<SeriesData[]>([])
   const [selectedSeries, setSelectedSeries] = useState<string>('')
@@ -63,6 +61,18 @@ export default function SeriesAssignmentReview() {
         return
       }
 
+      // Verify clinic role
+      const { data: clinicUser } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', authUser.id)
+        .single()
+
+      if (!clinicUser || (clinicUser.role !== 'clinic' && clinicUser.role !== 'admin')) {
+        router.push('/clinic')
+        return
+      }
+
       // Get assessment with user info
       const { data: assessmentData, error } = await supabase
         .from('fms_scores')
@@ -75,7 +85,7 @@ export default function SeriesAssignmentReview() {
 
       if (error || !assessmentData) {
         console.error('Error fetching assessment:', error)
-        router.push('/chief')
+        router.push('/clinic')
         return
       }
 
@@ -128,16 +138,21 @@ export default function SeriesAssignmentReview() {
   const loadSeriesExercises = async (seriesId: string) => {
     try {
       // Get series details
-      const { data: seriesData } = await supabase
+      const { data: seriesData, error: seriesError } = await supabase
         .from('series')
         .select('*')
         .eq('id', seriesId)
         .single()
 
+      if (seriesError) {
+        console.error('Error fetching series:', seriesError)
+        return
+      }
+
       if (!seriesData) return
 
       // Get exercises for each week
-      const { data: seriesExercisesData } = await supabase
+      const { data: seriesExercisesData, error: exercisesError } = await supabase
         .from('series_exercises')
         .select(`
           *,
@@ -147,27 +162,30 @@ export default function SeriesAssignmentReview() {
         .order('week_number')
         .order('order_in_week')
 
-      if (seriesExercisesData) {
-        const exercises = {
-          week_1: seriesExercisesData
-            .filter(se => se.week_number === 1)
-            .map(se => se.exercise as ExerciseData)
-            .filter(Boolean),
-          week_2: seriesExercisesData
-            .filter(se => se.week_number === 2)
-            .map(se => se.exercise as ExerciseData)
-            .filter(Boolean),
-          week_3: seriesExercisesData
-            .filter(se => se.week_number === 3)
-            .map(se => se.exercise as ExerciseData)
-            .filter(Boolean)
-        }
-
-        setSeriesExercises({
-          ...seriesData,
-          exercises
-        })
+      if (exercisesError) {
+        console.error('Error fetching series exercises:', exercisesError)
       }
+
+      // Even if no exercises found, still show the series preview
+      const exercises = {
+        week_1: (seriesExercisesData || [])
+          .filter(se => se.week_number === 1)
+          .map(se => se.exercise as ExerciseData)
+          .filter(Boolean),
+        week_2: (seriesExercisesData || [])
+          .filter(se => se.week_number === 2)
+          .map(se => se.exercise as ExerciseData)
+          .filter(Boolean),
+        week_3: (seriesExercisesData || [])
+          .filter(se => se.week_number === 3)
+          .map(se => se.exercise as ExerciseData)
+          .filter(Boolean)
+      }
+
+      setSeriesExercises({
+        ...seriesData,
+        exercises
+      })
     } catch (error) {
       console.error('Error loading series exercises:', error)
     }
@@ -189,7 +207,7 @@ export default function SeriesAssignmentReview() {
         .gte('end_date', new Date().toISOString().split('T')[0])
 
       if (existingAssignments && existingAssignments.length > 0) {
-        const confirm = window.confirm('This firefighter already has an active series. Do you want to replace it?')
+        const confirm = window.confirm('This person already has an active series. Do you want to replace it?')
         if (!confirm) {
           setSaving(false)
           return
@@ -212,20 +230,17 @@ export default function SeriesAssignmentReview() {
         .insert({
           user_id: assessment.user_id,
           series_id: selectedSeries,
-          assigned_by: authUser?.id,
-          fms_score_id: assessmentId,
           start_date: startDate.toISOString().split('T')[0],
           end_date: endDate.toISOString().split('T')[0],
           current_week: 1,
           completed: false,
-          completion_percentage: 0,
-          points_earned: 0
+          completion_percentage: 0
         })
 
       if (error) throw error
 
-      // Success - redirect to chief dashboard
-      router.push('/chief')
+      // Success - redirect to clinic dashboard
+      router.push('/clinic')
     } catch (error) {
       console.error('Error assigning series:', error)
       alert('Failed to assign series. Please try again.')
@@ -250,7 +265,7 @@ export default function SeriesAssignmentReview() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
         <div className="text-center">
-          <Target className="h-16 w-16 text-fire-gold animate-pulse mx-auto mb-4" />
+          <Target className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">Loading Assessment...</h2>
           <Skeleton className="h-4 w-48 mx-auto" />
         </div>
@@ -275,14 +290,14 @@ export default function SeriesAssignmentReview() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push('/chief')}
+              onClick={() => router.push('/clinic')}
               className="text-gray-400 hover:text-white"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
             </Button>
             <div className="flex items-center gap-2">
-              <Shield className="h-6 w-6 text-fire-gold" />
+              <Activity className="h-6 w-6 text-blue-400" />
               <h1 className="text-lg font-bold text-white">Assign Training Series</h1>
             </div>
             <div />
@@ -299,7 +314,9 @@ export default function SeriesAssignmentReview() {
           <CardContent>
             <div className="grid md:grid-cols-3 gap-6">
               <div>
-                <p className="text-sm text-gray-400 mb-1">Firefighter</p>
+                <p className="text-sm text-gray-400 mb-1">
+                  {assessment.user.role === 'chief' ? 'Chief' : 'Firefighter'}
+                </p>
                 <p className="text-xl font-bold text-white">{assessment.user.name}</p>
                 <p className="text-sm text-gray-400">Badge #{assessment.user.badge_number}</p>
               </div>
@@ -351,7 +368,7 @@ export default function SeriesAssignmentReview() {
                     onClick={() => setSelectedSeries(series.id)}
                     className={`w-full p-4 rounded-lg border text-left transition-colors ${
                       selectedSeries === series.id
-                        ? 'bg-fire-gold/20 border-fire-gold/50'
+                        ? 'bg-blue-500/20 border-blue-500/50'
                         : 'bg-white/5 border-white/10 hover:bg-white/10'
                     }`}
                   >
@@ -360,7 +377,7 @@ export default function SeriesAssignmentReview() {
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold text-white">{series.name}</h3>
                           {isRecommended && (
-                            <Badge className="bg-fire-gold/20 text-fire-gold border-fire-gold/30">
+                            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
                               <Star className="h-3 w-3 mr-1" />
                               Recommended
                             </Badge>
@@ -370,19 +387,23 @@ export default function SeriesAssignmentReview() {
                         <div className="flex items-center gap-4 mt-2 text-xs">
                           <span className="text-gray-500">
                             <Clock className="inline h-3 w-3 mr-1" />
-                            {series.duration_weeks} weeks
+                            3 weeks
                           </span>
-                          <span className="text-gray-500">
-                            <Target className="inline h-3 w-3 mr-1" />
-                            {series.target_area}
-                          </span>
-                          <Badge variant="outline" className="text-xs border-white/20">
-                            {series.difficulty_level}
-                          </Badge>
+                          {series.target_area && (
+                            <span className="text-gray-500">
+                              <Target className="inline h-3 w-3 mr-1" />
+                              {series.target_area}
+                            </span>
+                          )}
+                          {series.difficulty_level && (
+                            <Badge variant="outline" className="text-xs border-white/20">
+                              {series.difficulty_level}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       {selectedSeries === series.id && (
-                        <CheckCircle className="h-5 w-5 text-fire-gold mt-1" />
+                        <CheckCircle className="h-5 w-5 text-blue-400 mt-1" />
                       )}
                     </div>
                   </button>
@@ -405,7 +426,7 @@ export default function SeriesAssignmentReview() {
                 <CardContent>
                   {/* Week 1 */}
                   <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-fire-gold mb-2">
+                    <h4 className="text-sm font-semibold text-blue-400 mb-2">
                       Week 1: Foundation
                     </h4>
                     <div className="space-y-2">
@@ -413,18 +434,17 @@ export default function SeriesAssignmentReview() {
                         <div key={idx} className="flex items-center gap-2 text-sm">
                           <div className="w-1 h-1 bg-gray-400 rounded-full" />
                           <span className="text-gray-300">{exercise.name}</span>
-                          <span className="text-gray-500 text-xs">
-                            {exercise.sets && `${exercise.sets} sets`}
-                            {exercise.reps && ` × ${exercise.reps} reps`}
-                          </span>
                         </div>
                       ))}
+                      {seriesExercises.exercises.week_1.length === 0 && (
+                        <p className="text-gray-500 text-sm">No exercises configured</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Week 2 */}
                   <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-fire-gold mb-2">
+                    <h4 className="text-sm font-semibold text-blue-400 mb-2">
                       Week 2: Progression
                     </h4>
                     <div className="space-y-2">
@@ -432,18 +452,17 @@ export default function SeriesAssignmentReview() {
                         <div key={idx} className="flex items-center gap-2 text-sm">
                           <div className="w-1 h-1 bg-gray-400 rounded-full" />
                           <span className="text-gray-300">{exercise.name}</span>
-                          <span className="text-gray-500 text-xs">
-                            {exercise.sets && `${exercise.sets} sets`}
-                            {exercise.reps && ` × ${exercise.reps} reps`}
-                          </span>
                         </div>
                       ))}
+                      {seriesExercises.exercises.week_2.length === 0 && (
+                        <p className="text-gray-500 text-sm">No exercises configured</p>
+                      )}
                     </div>
                   </div>
 
                   {/* Week 3 */}
                   <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-fire-gold mb-2">
+                    <h4 className="text-sm font-semibold text-blue-400 mb-2">
                       Week 3: Integration
                     </h4>
                     <div className="space-y-2">
@@ -451,19 +470,18 @@ export default function SeriesAssignmentReview() {
                         <div key={idx} className="flex items-center gap-2 text-sm">
                           <div className="w-1 h-1 bg-gray-400 rounded-full" />
                           <span className="text-gray-300">{exercise.name}</span>
-                          <span className="text-gray-500 text-xs">
-                            {exercise.sets && `${exercise.sets} sets`}
-                            {exercise.reps && ` × ${exercise.reps} reps`}
-                          </span>
                         </div>
                       ))}
+                      {seriesExercises.exercises.week_3.length === 0 && (
+                        <p className="text-gray-500 text-sm">No exercises configured</p>
+                      )}
                     </div>
                   </div>
 
                   <Button
                     onClick={handleAssignSeries}
                     disabled={saving || !selectedSeries}
-                    className="w-full bg-fire-red hover:bg-red-700 text-white"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     {saving ? (
                       <>

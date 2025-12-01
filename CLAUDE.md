@@ -1,7 +1,7 @@
 # Summit Monorepo - AI Assistant Context File
 
-**Last Updated**: November 18, 2025
-**Version**: 1.0.1 (Fire App Deployed)
+**Last Updated**: November 30, 2025
+**Version**: 1.0.2 (Clinic Role Feature Added)
 **Purpose**: Quick reference for Claude Code or other AI assistants
 
 ---
@@ -42,7 +42,9 @@ summit/
 │   │   ├── page.tsx             # Landing/demo page
 │   │   ├── auth/                # Authentication
 │   │   ├── firefighter/         # Firefighter dashboard
-│   │   └── chief/               # Chief dashboard & analytics
+│   │   ├── chief/               # Chief dashboard & analytics
+│   │   ├── clinic/              # 🏥 Clinic dashboard & assessment (NEW)
+│   │   └── profile/             # User profile page
 │   ├── components/              # React components
 │   ├── lib/supabase/           # Supabase client setup
 │   ├── types/                  # TypeScript types
@@ -117,12 +119,18 @@ Core Tables:
 
 ### Fire App Logic
 
-**FMS Assessment Flow:**
-1. Chief/Admin conducts FMS assessment
-2. Assigns appropriate 3-week mini-series based on weak areas
-3. Series automatically progresses through weeks
-4. Points awarded for completions (10 per exercise)
-5. Department leaderboard updates in real-time
+**FMS Assessment Flow (Clinic Role):**
+1. Clinic staff conducts 7-pattern FMS assessment on firefighter OR chief
+2. Assessment stores final scores (lower of L/R for bilateral movements)
+3. Clinic assigns appropriate 3-week mini-series based on weak areas
+4. Series automatically progresses through weeks
+5. Points awarded for completions (10 per exercise)
+6. Department leaderboard updates in real-time
+
+**User Management:**
+- **Clinic** can create both chief and firefighter accounts
+- **Chiefs** can view their team but CANNOT add firefighters
+- Temp passwords displayed on account creation (manual handoff)
 
 **Mini-Series Model:**
 - 3-week progressive programs targeting specific areas
@@ -295,7 +303,6 @@ Enter: Deep Squat=3, Hurdle(L=3,R=3), Inline(L=2,R=3), Shoulder(L=3,R=3), ASLR(L
 3. ✅ Environment variables configured
 4. ✅ All features working in production
 5. ✅ Mobile Safari UI fixes applied
-6. ⏳ Ready to share demo URL with fire chiefs
 
 **Deployment Fixes Applied:**
 - TypeScript build errors bypassed (`ignoreBuildErrors: true`)
@@ -304,15 +311,80 @@ Enter: Deep Squat=3, Hurdle(L=3,R=3), Inline(L=2,R=3), Shoulder(L=3,R=3), ASLR(L
 - Removed broken "View Profile" and "Continue Training" buttons
 - Automatic Vercel deployment from dev branch configured
 
-**Future Enhancements (Post-Deployment):**
-- Video demonstration integration
-- Email notifications for assignments
-- Automatic week progression
-- Enable Row Level Security
-- Multi-station support
-- User profile editing
-- Exercise history view
-- Achievement notifications UI
+### ✅ Clinic Role Feature (Nov 30, 2025) 🏥
+1. ✅ Clinic dashboard (`/clinic`) - Assessment-focused interface
+2. ✅ FMS assessment - Can assess both chiefs AND firefighters
+3. ✅ Series assignment after assessment
+4. ✅ Team roster management (`/clinic/team`)
+5. ✅ Add chief/firefighter with temp password display
+6. ✅ Chiefs can no longer add firefighters (clinic-only)
+7. ✅ Login redirects for clinic role
+8. ✅ Database constraint updated for 'clinic' role
+
+### 🔥 Fire App - Remaining Work (Priority Order)
+
+**High Priority (Before Next Demo):**
+
+1. **Injury Tracking for Clinic** ⏱️ 4-5 hours
+   - [ ] Create `/clinic/injuries` page to log and view injuries
+   - [ ] Log injuries during or after FMS assessment
+   - [ ] Link injuries to specific users (firefighter or chief)
+   - [ ] Track: injury type, date, severity, body area, notes
+   - [ ] View injury history per person
+   - [ ] Chiefs can view (read-only) injury reports for their station
+
+2. **FMS Assessment History** ⏱️ 3-4 hours
+   - [ ] View previous FMS assessments for a user
+   - [ ] Compare scores over time (score trend chart)
+   - [ ] Show improvement/decline indicators
+   - [ ] Add "View History" button on team roster
+   - [ ] Display last assessment date prominently on user cards
+
+3. **Password Change Feature** ⏱️ 2-3 hours
+   - [ ] Add "Change Password" section to profile page
+   - [ ] First-login password change prompt (optional enhancement)
+   - [ ] Validate new password requirements
+   - [ ] Success confirmation message
+
+**Medium Priority (Post-Demo Enhancements):**
+
+4. **Reassessment Workflow** ⏱️ 2-3 hours
+   - [ ] "Due for reassessment" indicator (e.g., 90+ days since last)
+   - [ ] Filter team roster by assessment status (overdue, recent, never)
+   - [ ] Quick "reassess" action button from team list
+   - [ ] Reassessment reminders/notifications (future)
+
+5. **Clinic Dashboard Analytics** ⏱️ 3-4 hours
+   - [ ] Assessments completed this week/month count
+   - [ ] Department-wide average FMS score
+   - [ ] Score trends over time (improving vs declining firefighters)
+   - [ ] Personnel needing attention (low scores, overdue assessments)
+
+6. **Series Management for Clinic** ⏱️ 2-3 hours
+   - [ ] View all active series assignments across station
+   - [ ] Ability to reassign or cancel a series
+   - [ ] Track series completion rates
+   - [ ] See which series are most effective (completion %)
+
+**Lower Priority (Future Iterations):**
+
+7. **Multi-Station Support**
+   - [ ] Clinic user assigned to multiple stations
+   - [ ] Station selector dropdown in clinic dashboard
+   - [ ] Cross-station reporting for clinic admins
+   - [ ] Separate manager app for multi-station administration
+
+8. **Email Notifications**
+   - [ ] Welcome email with credentials on account creation
+   - [ ] Assessment completion notifications to chief
+   - [ ] Series assignment notifications to firefighter
+   - [ ] Weekly progress summary emails
+
+9. **Advanced Reporting**
+   - [ ] Export data to CSV/PDF
+   - [ ] Custom date range reports
+   - [ ] Injury correlation with FMS scores analysis
+   - [ ] ROI metrics (cost savings from injury prevention)
 
 ---
 
@@ -349,19 +421,25 @@ Enter: Deep Squat=3, Hurdle(L=3,R=3), Inline(L=2,R=3), Shoulder(L=3,R=3), ASLR(L
 - Exercise completion: `clinic-app/app/patient/exercise/[id]/page.tsx:150-180`
 - Add patient flow: `clinic-app/app/employee/page.tsx:90-120`
 
-**Fire App:** ✨ UPDATED Nov 17
+**Fire App:** ✨ UPDATED Nov 30
 - Database schema: `fire-app/supabase/schema.sql` ✅
 - Seed data: `fire-app/supabase/seed.sql` ✅
 - UUID sync script: `fire-app/supabase/restore-with-auth-uuids.sql` ✅
 - Firefighter dashboard: `fire-app/app/firefighter/page.tsx` ✅ REAL DATA
 - Chief dashboard: `fire-app/app/chief/page.tsx` ✅ FULL FEATURES
-- FMS Assessment: `fire-app/app/chief/assessment/page.tsx` ✅
-- Series Assignment: `fire-app/app/chief/assessment/review/[assessmentId]/page.tsx` ✅
+- Chief FMS Assessment: `fire-app/app/chief/assessment/page.tsx` ✅
+- Chief Series Assignment: `fire-app/app/chief/assessment/review/[assessmentId]/page.tsx` ✅
 - Exercise Detail: `fire-app/app/firefighter/exercise/[id]/page.tsx` ✅
 - Login page: `fire-app/app/auth/login/page.tsx` ✅ ANIMATED
 - TypeScript types: `fire-app/types/database.ts` ✅
 - Supabase client: `fire-app/lib/supabase/client.ts` ✅
 - Supabase server: `fire-app/lib/supabase/server.ts` ✅
+- **Clinic dashboard**: `fire-app/app/clinic/page.tsx` ✅ NEW
+- **Clinic FMS assessment**: `fire-app/app/clinic/assessment/page.tsx` ✅ NEW
+- **Clinic series assignment**: `fire-app/app/clinic/assessment/review/[assessmentId]/page.tsx` ✅ NEW
+- **Clinic team roster**: `fire-app/app/clinic/team/page.tsx` ✅ NEW
+- **Clinic add user**: `fire-app/app/clinic/team/new/page.tsx` ✅ NEW
+- **Profile page**: `fire-app/app/profile/page.tsx` ✅ UPDATED for clinic
 
 ---
 
@@ -415,6 +493,7 @@ Enter: Deep Squat=3, Hurdle(L=3,R=3), Inline(L=2,R=3), Shoulder(L=3,R=3), ASLR(L
 - Loading states and animations
 
 **Demo Accounts:**
+- Clinic: `clinic@firestation1.com` / `demo123`
 - Chief: `chief@firestation1.com` / `demo123`
 - Firefighter: `john@firestation1.com` / `demo123`
 

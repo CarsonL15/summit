@@ -150,8 +150,8 @@ export default function ProfilePage() {
         return { label: 'Administrator', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' }
       case 'firefighter':
         return { label: 'Firefighter', color: 'bg-fire-gold/20 text-fire-gold border-fire-gold/30' }
-      case 'pt':
-        return { label: 'Physical Therapist', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' }
+      case 'clinic':
+        return { label: 'Clinic Staff', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' }
       default:
         return { label: role, color: 'bg-gray-500/20 text-gray-400 border-gray-500/30' }
     }
@@ -188,7 +188,8 @@ export default function ProfilePage() {
   }
 
   const roleDisplay = getRoleDisplay(user.role)
-  const dashboardPath = user.role === 'chief' || user.role === 'admin' ? '/chief' : '/firefighter'
+  const dashboardPath = user.role === 'clinic' ? '/clinic' :
+                        user.role === 'chief' || user.role === 'admin' ? '/chief' : '/firefighter'
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">

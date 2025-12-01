@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Flame, Shield, AlertCircle, User, Lock } from 'lucide-react'
+import { Flame, Shield, AlertCircle, User, Lock, Activity } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 export default function LoginPage() {
@@ -17,7 +17,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedDemo, setSelectedDemo] = useState<'chief' | 'firefighter' | null>(null)
+  const [selectedDemo, setSelectedDemo] = useState<'chief' | 'firefighter' | 'clinic' | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -51,7 +51,9 @@ export default function LoginPage() {
       }
 
       // Redirect based on role
-      if (userData?.role === 'chief' || userData?.role === 'admin') {
+      if (userData?.role === 'clinic') {
+        router.push('/clinic')
+      } else if (userData?.role === 'chief' || userData?.role === 'admin') {
         router.push('/chief')
       } else {
         router.push('/firefighter')
@@ -64,10 +66,13 @@ export default function LoginPage() {
     }
   }
 
-  const fillDemoCredentials = (type: 'chief' | 'firefighter') => {
+  const fillDemoCredentials = (type: 'chief' | 'firefighter' | 'clinic') => {
     setSelectedDemo(type)
     if (type === 'chief') {
       setEmail('chief@firestation1.com')
+      setPassword('demo123')
+    } else if (type === 'clinic') {
+      setEmail('clinic@firestation1.com')
       setPassword('demo123')
     } else {
       setEmail('john@firestation1.com')
@@ -101,7 +106,18 @@ export default function LoginPage() {
             {/* Demo Account Selector */}
             <div className="space-y-3">
               <Label className="text-gray-300">Quick Demo Access</Label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  type="button"
+                  variant={selectedDemo === 'clinic' ? 'default' : 'outline'}
+                  className={selectedDemo === 'clinic'
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                    : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}
+                  onClick={() => fillDemoCredentials('clinic')}
+                >
+                  <Activity className="mr-1 h-4 w-4" />
+                  Clinic
+                </Button>
                 <Button
                   type="button"
                   variant={selectedDemo === 'chief' ? 'default' : 'outline'}
@@ -110,8 +126,8 @@ export default function LoginPage() {
                     : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}
                   onClick={() => fillDemoCredentials('chief')}
                 >
-                  <Shield className="mr-2 h-4 w-4" />
-                  Fire Chief
+                  <Shield className="mr-1 h-4 w-4" />
+                  Chief
                 </Button>
                 <Button
                   type="button"
@@ -121,8 +137,8 @@ export default function LoginPage() {
                     : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}
                   onClick={() => fillDemoCredentials('firefighter')}
                 >
-                  <User className="mr-2 h-4 w-4" />
-                  Firefighter
+                  <Flame className="mr-1 h-4 w-4" />
+                  FF
                 </Button>
               </div>
             </div>
@@ -206,6 +222,7 @@ export default function LoginPage() {
                 <AlertCircle className="h-4 w-4 text-blue-400 mt-0.5" />
                 <div className="text-xs text-blue-300">
                   <p className="font-semibold mb-1">Demo Accounts:</p>
+                  <p>Clinic: clinic@firestation1.com</p>
                   <p>Chief: chief@firestation1.com</p>
                   <p>Firefighter: john@firestation1.com</p>
                   <p className="mt-1">Password: demo123</p>
