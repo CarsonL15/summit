@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -14,7 +14,7 @@ import {
   CheckCircle, AlertCircle, Loader2, Users, Flame
 } from 'lucide-react'
 
-export default function ClinicAddUserPage() {
+function ClinicAddUserPageContent() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [badgeNumber, setBadgeNumber] = useState('')
@@ -388,5 +388,20 @@ export default function ClinicAddUserPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ClinicAddUserPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-16 w-16 text-blue-400 animate-spin mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-white mb-2">Loading...</h2>
+        </div>
+      </div>
+    }>
+      <ClinicAddUserPageContent />
+    </Suspense>
   )
 }

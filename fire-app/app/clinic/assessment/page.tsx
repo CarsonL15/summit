@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { AnimatedCard, AnimatedCardContent, AnimatedCardHeader, AnimatedCardTitle } from '@/components/ui/animated-card'
@@ -97,7 +97,7 @@ const movementPatterns: MovementPattern[] = [
   }
 ]
 
-export default function ClinicFMSAssessment() {
+function ClinicFMSAssessmentContent() {
   const [stationUsers, setStationUsers] = useState<UserData[]>([])
   const [selectedUser, setSelectedUser] = useState<string>('')
   const [selectedUserData, setSelectedUserData] = useState<UserData | null>(null)
@@ -653,5 +653,20 @@ export default function ClinicFMSAssessment() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function ClinicFMSAssessment() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
+        <div className="text-center">
+          <Activity className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-white mb-2">Loading Assessment...</h2>
+        </div>
+      </div>
+    }>
+      <ClinicFMSAssessmentContent />
+    </Suspense>
   )
 }
