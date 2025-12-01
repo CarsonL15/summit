@@ -13,7 +13,7 @@ import { ProgressBar } from '@/components/ui/progress-bar'
 import {
   Flame, Users, Trophy, Activity, TrendingUp, Award,
   FileText, Plus, LogOut, Shield, ChevronRight, Clock,
-  Target, Zap, Star, AlertTriangle
+  Target, Zap, Star, AlertTriangle, User
 } from 'lucide-react'
 import { Database } from '@/types/database'
 
@@ -275,11 +275,20 @@ export default function ChiefDashboard() {
                 <p className="text-xs sm:text-sm text-gray-400">{station.name}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-white">{user.name}</p>
                 <p className="text-xs text-gray-400">Badge #{user.badge_number}</p>
               </div>
+              <Link href="/profile">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-400 hover:text-white p-2"
+                >
+                  <User className="h-4 w-4" />
+                </Button>
+              </Link>
               <Button
                 variant="ghost"
                 size="sm"

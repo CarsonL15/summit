@@ -11,8 +11,6 @@ export default function FireLandingPage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-10"></div>
-
         <div className="relative container mx-auto px-4 py-20">
           {/* Header */}
           <div className="flex items-center justify-between mb-8 sm:mb-16">
@@ -33,27 +31,33 @@ export default function FireLandingPage() {
               Functional Movement Screen for First Responders
             </Badge>
 
-            <h2 className="text-3xl sm:text-5xl md:text-6xl font-bold text-white mb-4 sm:mb-6">
-              Train Like Your Life
-              <span className="block text-fire-gold mt-2">Depends On It</span>
+            {/* Tagline */}
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-fire-gold mb-4 sm:mb-6">
+              Test. Target. Track. Transform.
             </h2>
 
-            <p className="text-base sm:text-lg md:text-xl text-gray-300 mb-6 sm:mb-8 max-w-2xl mx-auto px-4">
-              Professional FMS assessments and targeted training programs designed specifically
-              for firefighters and first responders. Reduce injuries, improve performance,
-              and track department-wide progress.
+            {/* Description */}
+            <p className="text-sm sm:text-base text-gray-300 mb-6 sm:mb-8 max-w-3xl mx-auto px-4 leading-relaxed">
+              We start with real data—objective movement testing to uncover risk before injury strikes.
+              From there, we deliver targeted mobility and strength training based on your department's
+              specific needs. Progress is tracked over time with clear metrics that guide smarter decisions
+              and better outcomes. The result? Tactical athletes who move better, perform stronger, and
+              stay in the game longer—while your department saves money on injuries, lost time, and
+              long-term costs.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
-              <Link href="/auth/login">
+              <Link href="/auth/signup">
                 <Button size="lg" className="bg-fire-red hover:bg-red-700 text-white w-full sm:w-auto">
                   <Shield className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                  Try Demo
+                  Get Started
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20 w-full sm:w-auto">
-                Learn More
-              </Button>
+              <Link href="/auth/login">
+                <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20 w-full sm:w-auto">
+                  Sign In
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -146,14 +150,21 @@ export default function FireLandingPage() {
               Ready to Get Your Department Started?
             </h3>
             <p className="text-sm sm:text-base text-gray-300 mb-6 sm:mb-8 max-w-2xl mx-auto px-4">
-              Try our demo to see how FireFMS can help reduce injuries and improve
+              Create your account today and see how FireFMS can help reduce injuries and improve
               performance across your entire department.
             </p>
-            <Link href="/auth/login">
-              <Button size="lg" className="bg-white text-slate-900 hover:bg-gray-100 w-full sm:w-auto">
-                Access Demo Dashboard
-              </Button>
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link href="/auth/signup">
+                <Button size="lg" className="bg-white text-slate-900 hover:bg-gray-100 w-full sm:w-auto">
+                  Create Free Account
+                </Button>
+              </Link>
+              <Link href="/auth/login">
+                <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20 w-full sm:w-auto">
+                  Sign In
+                </Button>
+              </Link>
+            </div>
           </div>
         </Card>
       </div>

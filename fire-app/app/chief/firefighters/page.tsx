@@ -171,6 +171,13 @@ export default function TeamManagement() {
                 <p className="text-xs sm:text-sm text-gray-400">{firefighters.length} firefighters</p>
               </div>
             </div>
+            <Link href="/chief/firefighters/new">
+              <Button className="bg-fire-red hover:bg-red-700 text-white">
+                <UserPlus className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Add Firefighter</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+            </Link>
           </div>
         </div>
       </header>

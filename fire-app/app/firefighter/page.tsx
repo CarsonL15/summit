@@ -237,11 +237,20 @@ export default function FirefighterDashboard() {
                 <p className="text-xs sm:text-sm text-gray-400">Station 1</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="text-right hidden sm:block">
                 <p className="text-xs sm:text-sm font-medium text-white">{user.name}</p>
-                <p className="text-xs text-gray-400 hidden sm:block">Badge #{user.badge_number}</p>
+                <p className="text-xs text-gray-400">Badge #{user.badge_number}</p>
               </div>
+              <Link href="/profile">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-400 hover:text-white p-2"
+                >
+                  <User className="h-4 w-4" />
+                </Button>
+              </Link>
               <Button
                 variant="ghost"
                 size="sm"

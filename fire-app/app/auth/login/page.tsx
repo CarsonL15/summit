@@ -77,9 +77,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-10"></div>
-
-      <div className="relative w-full max-w-md">
+      <div className="w-full max-w-md">
         {/* Logo Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
@@ -189,6 +187,13 @@ export default function LoginPage() {
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-4">
+            <div className="text-center text-sm text-gray-400">
+              Don't have an account?{' '}
+              <Link href="/auth/signup" className="text-fire-gold hover:text-yellow-500 transition-colors">
+                Sign up
+              </Link>
+            </div>
+
             <div className="text-center text-sm text-gray-400">
               <Link href="/" className="hover:text-white transition-colors">
                 ← Back to Home
