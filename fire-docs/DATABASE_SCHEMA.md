@@ -1,6 +1,6 @@
 # Fire FMS Database Schema
 
-**Last Updated**: November 30, 2025
+**Last Updated**: January 20, 2026
 **Database**: Supabase (PostgreSQL)
 **Purpose**: Schema reference for Fire Department FMS application
 
@@ -83,6 +83,8 @@ FMS assessment results for users.
 | duration_weeks | INTEGER | DEFAULT 3 | Program duration |
 | target_area | VARCHAR(100) | | Target body area |
 | difficulty_level | VARCHAR(20) | CHECK | beginner, intermediate, advanced |
+| series_type | ENUM | DEFAULT 'strength_conditioning' | 'rehab' or 'strength_conditioning' |
+| days_per_week | INTEGER | DEFAULT 3 | Days per week (7 for rehab, 3 for S&C) |
 | created_at | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
 | updated_at | TIMESTAMP | DEFAULT NOW() | Last update timestamp |
 
@@ -102,6 +104,7 @@ Exercise library.
 | duration_seconds | INTEGER | | Duration if time-based |
 | category | VARCHAR(100) | | Exercise category |
 | equipment_needed | VARCHAR(255) | | Required equipment |
+| tags | TEXT[] | DEFAULT '{}' | Array of tags for filtering |
 | created_at | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
 | updated_at | TIMESTAMP | DEFAULT NOW() | Last update timestamp |
 
@@ -181,6 +184,27 @@ Earned achievements per user.
 
 **Unique Constraint**: (user_id, achievement_id)
 
+### 11. injuries
+Injury tracking with FMS correlation.
+
+| Column | Type | Constraints | Description |
+|--------|------|------------|-------------|
+| id | UUID | PRIMARY KEY | Unique identifier |
+| user_id | UUID | FOREIGN KEY | Reference to users |
+| injury_type | VARCHAR(100) | NOT NULL | Type (strain, sprain, tear, etc.) |
+| body_location | VARCHAR(100) | NOT NULL | Body area (shoulder, knee, back, etc.) |
+| injury_date | DATE | NOT NULL | Date of injury |
+| days_out | INTEGER | DEFAULT 0 | Days missed from work |
+| return_date | DATE | | Return to duty date |
+| fms_score_at_time | INTEGER | | FMS score when injured |
+| followed_protocol | BOOLEAN | DEFAULT FALSE | Was following exercise protocol |
+| severity | VARCHAR(20) | CHECK | minor, moderate, severe |
+| cost_impact | DECIMAL(10,2) | | Estimated cost (medical + lost work) |
+| status | VARCHAR(20) | DEFAULT 'active' | active or closed |
+| notes | TEXT | | Injury notes |
+| created_at | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+| updated_at | TIMESTAMP | DEFAULT NOW() | Last update timestamp |
+
 ---
 
 ## Indexes
@@ -193,6 +217,12 @@ Earned achievements per user.
 - `idx_series_assignments_dates` on series_assignments(start_date, end_date)
 - `idx_exercise_completions_user` on exercise_completions(user_id)
 - `idx_exercise_completions_date` on exercise_completions(completed_date)
+- `idx_injuries_user` on injuries(user_id)
+- `idx_injuries_date` on injuries(injury_date)
+- `idx_injuries_fms_score` on injuries(fms_score_at_time)
+- `idx_injuries_status` on injuries(status)
+- `idx_series_type` on series(series_type)
+- `idx_exercises_tags` on exercises USING GIN(tags)
 
 ---
 
@@ -209,6 +239,15 @@ Earned achievements per user.
 - Week 2: Strength/Stability focus
 - Week 3: Integration/Advanced focus
 - Users progress automatically through weeks
+- **Series Types**:
+  - `strength_conditioning`: Standard S&C (3 days/week)
+  - `rehab`: Rehabilitation focus (7 days/week)
+
+### Injury Tracking
+- Link injuries to FMS scores for correlation analysis
+- Track whether injured personnel were following their exercise protocol
+- Status field: `active` (currently out) or `closed` (returned to duty)
+- Prevention metrics calculated from FMS correlation data
 
 ### Points System
 - 10 points per exercise completion

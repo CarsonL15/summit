@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  Activity, ArrowLeft, CheckCircle, Target, Clock, Star
+  Activity, ArrowLeft, CheckCircle, Target, Clock, Star, Calendar, Dumbbell
 } from 'lucide-react'
 import { Database } from '@/types/database'
 
@@ -374,7 +374,7 @@ export default function ClinicSeriesAssignmentReview() {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold text-white">{series.name}</h3>
                           {isRecommended && (
                             <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
@@ -382,12 +382,27 @@ export default function ClinicSeriesAssignmentReview() {
                               Recommended
                             </Badge>
                           )}
+                          {series.series_type && (
+                            <Badge
+                              className={`text-xs ${
+                                series.series_type === 'rehab'
+                                  ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+                                  : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                              }`}
+                            >
+                              {series.series_type === 'rehab' ? 'Rehab' : 'S&C'}
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-sm text-gray-400 mt-1">{series.description}</p>
-                        <div className="flex items-center gap-4 mt-2 text-xs">
+                        <div className="flex items-center gap-4 mt-2 text-xs flex-wrap">
                           <span className="text-gray-500">
                             <Clock className="inline h-3 w-3 mr-1" />
                             3 weeks
+                          </span>
+                          <span className="text-gray-500">
+                            <Calendar className="inline h-3 w-3 mr-1" />
+                            {series.days_per_week || 3}x/week
                           </span>
                           {series.target_area && (
                             <span className="text-gray-500">
@@ -418,7 +433,20 @@ export default function ClinicSeriesAssignmentReview() {
             {seriesExercises ? (
               <Card className="bg-white/5 border-white/10">
                 <CardHeader>
-                  <CardTitle className="text-white">{seriesExercises.name}</CardTitle>
+                  <div className="flex items-center gap-2 flex-wrap mb-2">
+                    <CardTitle className="text-white">{seriesExercises.name}</CardTitle>
+                    {seriesExercises.series_type && (
+                      <Badge
+                        className={`text-xs ${
+                          seriesExercises.series_type === 'rehab'
+                            ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+                            : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                        }`}
+                      >
+                        {seriesExercises.series_type === 'rehab' ? 'Rehab (7 days/week)' : 'S&C (3x/week)'}
+                      </Badge>
+                    )}
+                  </div>
                   <CardDescription className="text-gray-400">
                     {seriesExercises.description}
                   </CardDescription>
@@ -431,9 +459,24 @@ export default function ClinicSeriesAssignmentReview() {
                     </h4>
                     <div className="space-y-2">
                       {seriesExercises.exercises.week_1.slice(0, 4).map((exercise, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm">
-                          <div className="w-1 h-1 bg-gray-400 rounded-full" />
-                          <span className="text-gray-300">{exercise.name}</span>
+                        <div key={idx} className="flex items-start gap-2 text-sm">
+                          <div className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0" />
+                          <div className="flex-1">
+                            <span className="text-gray-300">{exercise.name}</span>
+                            {exercise.tags && exercise.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {exercise.tags.slice(0, 3).map((tag, tagIdx) => (
+                                  <Badge
+                                    key={tagIdx}
+                                    variant="outline"
+                                    className="text-xs bg-white/5 text-gray-400 border-white/10"
+                                  >
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ))}
                       {seriesExercises.exercises.week_1.length === 0 && (
@@ -449,9 +492,24 @@ export default function ClinicSeriesAssignmentReview() {
                     </h4>
                     <div className="space-y-2">
                       {seriesExercises.exercises.week_2.slice(0, 4).map((exercise, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm">
-                          <div className="w-1 h-1 bg-gray-400 rounded-full" />
-                          <span className="text-gray-300">{exercise.name}</span>
+                        <div key={idx} className="flex items-start gap-2 text-sm">
+                          <div className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0" />
+                          <div className="flex-1">
+                            <span className="text-gray-300">{exercise.name}</span>
+                            {exercise.tags && exercise.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {exercise.tags.slice(0, 3).map((tag, tagIdx) => (
+                                  <Badge
+                                    key={tagIdx}
+                                    variant="outline"
+                                    className="text-xs bg-white/5 text-gray-400 border-white/10"
+                                  >
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ))}
                       {seriesExercises.exercises.week_2.length === 0 && (
@@ -467,9 +525,24 @@ export default function ClinicSeriesAssignmentReview() {
                     </h4>
                     <div className="space-y-2">
                       {seriesExercises.exercises.week_3.slice(0, 4).map((exercise, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm">
-                          <div className="w-1 h-1 bg-gray-400 rounded-full" />
-                          <span className="text-gray-300">{exercise.name}</span>
+                        <div key={idx} className="flex items-start gap-2 text-sm">
+                          <div className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0" />
+                          <div className="flex-1">
+                            <span className="text-gray-300">{exercise.name}</span>
+                            {exercise.tags && exercise.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {exercise.tags.slice(0, 3).map((tag, tagIdx) => (
+                                  <Badge
+                                    key={tagIdx}
+                                    variant="outline"
+                                    className="text-xs bg-white/5 text-gray-400 border-white/10"
+                                  >
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ))}
                       {seriesExercises.exercises.week_3.length === 0 && (

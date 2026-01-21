@@ -82,6 +82,7 @@ export interface Database {
           video_url: string | null
           instructions: string | null
           equipment_needed: string | null
+          tags: string[] | null
           created_at: string
           updated_at: string
         }
@@ -93,6 +94,7 @@ export interface Database {
           video_url?: string | null
           instructions?: string | null
           equipment_needed?: string | null
+          tags?: string[] | null
           created_at?: string
           updated_at?: string
         }
@@ -104,6 +106,7 @@ export interface Database {
           video_url?: string | null
           instructions?: string | null
           equipment_needed?: string | null
+          tags?: string[] | null
           created_at?: string
           updated_at?: string
         }
@@ -179,7 +182,10 @@ export interface Database {
           name: string
           description: string | null
           target_areas: string[] | null
+          target_area: string | null
           difficulty_level: string | null
+          series_type: 'rehab' | 'strength_conditioning' | null
+          days_per_week: number | null
           created_at: string
         }
         Insert: {
@@ -187,7 +193,10 @@ export interface Database {
           name: string
           description?: string | null
           target_areas?: string[] | null
+          target_area?: string | null
           difficulty_level?: string | null
+          series_type?: 'rehab' | 'strength_conditioning' | null
+          days_per_week?: number | null
           created_at?: string
         }
         Update: {
@@ -195,7 +204,10 @@ export interface Database {
           name?: string
           description?: string | null
           target_areas?: string[] | null
+          target_area?: string | null
           difficulty_level?: string | null
+          series_type?: 'rehab' | 'strength_conditioning' | null
+          days_per_week?: number | null
           created_at?: string
         }
       }
@@ -325,6 +337,7 @@ export interface Database {
           followed_protocol: boolean
           severity: 'minor' | 'moderate' | 'severe' | null
           cost_impact: number | null
+          status: 'active' | 'closed' | null
           notes: string | null
           created_at: string
           updated_at: string
@@ -341,6 +354,7 @@ export interface Database {
           followed_protocol?: boolean
           severity?: 'minor' | 'moderate' | 'severe' | null
           cost_impact?: number | null
+          status?: 'active' | 'closed' | null
           notes?: string | null
           created_at?: string
           updated_at?: string
@@ -357,6 +371,7 @@ export interface Database {
           followed_protocol?: boolean
           severity?: 'minor' | 'moderate' | 'severe' | null
           cost_impact?: number | null
+          status?: 'active' | 'closed' | null
           notes?: string | null
           created_at?: string
           updated_at?: string
