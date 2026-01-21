@@ -14,6 +14,7 @@ import {
   Calendar, TrendingUp, AlertTriangle, User, Clock
 } from 'lucide-react'
 import { Database } from '@/types/database'
+import { getRiskLevel, getRiskBadgeClasses, getRiskLabel, getRiskTextColor, RISK_THRESHOLDS } from '@/lib/utils/fms'
 
 type UserData = Database['public']['Tables']['users']['Row']
 type FMSScoreData = Database['public']['Tables']['fms_scores']['Row']
@@ -29,7 +30,7 @@ export default function AssessmentReports() {
   const [filteredAssessments, setFilteredAssessments] = useState<AssessmentWithDetails[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
-  const [scoreFilter, setScoreFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all')
+  const [scoreFilter, setScoreFilter] = useState<'all' | 'high' | 'moderate' | 'low'>('all')
   const router = useRouter()
   const supabase = createClient()
 
@@ -132,12 +133,13 @@ export default function AssessmentReports() {
       )
     }
 
-    // Score filter
+    // Score filter - uses risk level (high risk = low score, low risk = high score)
     if (scoreFilter !== 'all') {
       filtered = filtered.filter(a => {
-        if (scoreFilter === 'high' && a.total_score >= 17) return true
-        if (scoreFilter === 'medium' && a.total_score >= 14 && a.total_score < 17) return true
-        if (scoreFilter === 'low' && a.total_score < 14) return true
+        const risk = getRiskLevel(a.total_score)
+        if (scoreFilter === 'low' && risk === 'low') return true      // 18-21
+        if (scoreFilter === 'moderate' && risk === 'moderate') return true  // 15-17
+        if (scoreFilter === 'high' && risk === 'high') return true    // <15
         return false
       })
     }
@@ -145,17 +147,12 @@ export default function AssessmentReports() {
     setFilteredAssessments(filtered)
   }
 
-  const getScoreColor = (score: number) => {
-    if (score >= 17) return 'text-green-400'
-    if (score >= 14) return 'text-yellow-400'
-    return 'text-red-400'
-  }
+  const getScoreColor = (score: number) => getRiskTextColor(score)
 
-  const getScoreBadge = (score: number) => {
-    if (score >= 17) return { text: 'Low Risk', className: 'bg-green-500/20 text-green-400 border-green-500/30' }
-    if (score >= 14) return { text: 'Moderate Risk', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' }
-    return { text: 'High Risk', className: 'bg-red-500/20 text-red-400 border-red-500/30' }
-  }
+  const getScoreBadge = (score: number) => ({
+    text: getRiskLabel(score),
+    className: getRiskBadgeClasses(score)
+  })
 
   if (loading) {
     return (
@@ -215,28 +212,28 @@ export default function AssessmentReports() {
                   All Scores
                 </Button>
                 <Button
-                  variant={scoreFilter === 'high' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setScoreFilter('high')}
-                  className={scoreFilter === 'high' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
-                >
-                  High (17+)
-                </Button>
-                <Button
-                  variant={scoreFilter === 'medium' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setScoreFilter('medium')}
-                  className={scoreFilter === 'medium' ? 'bg-yellow-600 text-white hover:bg-yellow-700' : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
-                >
-                  Medium (14-16)
-                </Button>
-                <Button
                   variant={scoreFilter === 'low' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setScoreFilter('low')}
-                  className={scoreFilter === 'low' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
+                  className={scoreFilter === 'low' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
                 >
-                  Low (&lt;14)
+                  Low Risk (18+)
+                </Button>
+                <Button
+                  variant={scoreFilter === 'moderate' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setScoreFilter('moderate')}
+                  className={scoreFilter === 'moderate' ? 'bg-yellow-600 text-white hover:bg-yellow-700' : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
+                >
+                  Moderate (15-17)
+                </Button>
+                <Button
+                  variant={scoreFilter === 'high' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setScoreFilter('high')}
+                  className={scoreFilter === 'high' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
+                >
+                  High Risk (&lt;15)
                 </Button>
               </div>
             </div>
@@ -369,21 +366,21 @@ export default function AssessmentReports() {
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-green-400">
-                    {assessments.filter(a => a.total_score >= 17).length}
+                    {assessments.filter(a => getRiskLevel(a.total_score) === 'low').length}
                   </p>
-                  <p className="text-xs text-gray-400">Low Risk</p>
+                  <p className="text-xs text-gray-400">Low Risk (18-21)</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-yellow-400">
-                    {assessments.filter(a => a.total_score >= 14 && a.total_score < 17).length}
+                    {assessments.filter(a => getRiskLevel(a.total_score) === 'moderate').length}
                   </p>
-                  <p className="text-xs text-gray-400">Moderate Risk</p>
+                  <p className="text-xs text-gray-400">Moderate (15-17)</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-red-400">
-                    {assessments.filter(a => a.total_score < 14).length}
+                    {assessments.filter(a => getRiskLevel(a.total_score) === 'high').length}
                   </p>
-                  <p className="text-xs text-gray-400">High Risk</p>
+                  <p className="text-xs text-gray-400">High Risk (&lt;15)</p>
                 </div>
               </div>
             </CardContent>
