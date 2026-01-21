@@ -15,6 +15,7 @@ import {
   Shield, ChevronRight, Search, AlertCircle, CheckCircle, Clock
 } from 'lucide-react'
 import { Database } from '@/types/database'
+import { getRiskLevel, getRiskTextColor } from '@/lib/utils/fms'
 
 type UserData = Database['public']['Tables']['users']['Row']
 type StationData = Database['public']['Tables']['stations']['Row']
@@ -443,10 +444,7 @@ export default function ClinicDashboard() {
                             <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
                               {u.badge_number && <span>#{u.badge_number}</span>}
                               {u.last_fms_score !== undefined && (
-                                <span className={
-                                  u.last_fms_score >= 17 ? 'text-green-400' :
-                                  u.last_fms_score >= 14 ? 'text-yellow-400' : 'text-red-400'
-                                }>
+                                <span className={getRiskTextColor(u.last_fms_score)}>
                                   FMS: {u.last_fms_score}
                                 </span>
                               )}
@@ -517,13 +515,9 @@ export default function ClinicDashboard() {
                             {assessment.assessed_date && new Date(assessment.assessed_date).toLocaleDateString()}
                           </p>
                         </div>
-                        <div className={`text-2xl font-bold ${
-                          assessment.total_score >= 17 ? 'text-green-400' :
-                          assessment.total_score >= 14 ? 'text-yellow-400' :
-                          'text-red-400'
-                        }`}>
-                          {assessment.total_score >= 17 ? '✓' :
-                           assessment.total_score >= 14 ? '⚠' : '✗'}
+                        <div className={`text-2xl font-bold ${getRiskTextColor(assessment.total_score)}`}>
+                          {getRiskLevel(assessment.total_score) === 'low' ? '✓' :
+                           getRiskLevel(assessment.total_score) === 'moderate' ? '⚠' : '✗'}
                         </div>
                       </div>
                       {assessment.notes && (

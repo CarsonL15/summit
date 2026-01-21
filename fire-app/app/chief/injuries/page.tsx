@@ -14,6 +14,7 @@ import {
   ChevronLeft, Users, Activity, Shield, CheckCircle, XCircle
 } from 'lucide-react'
 import { Database } from '@/types/database'
+import { getRiskLevel, getRiskBadgeClasses } from '@/lib/utils/fms'
 
 type InjuryData = Database['public']['Tables']['injuries']['Row']
 type UserData = Database['public']['Tables']['users']['Row']
@@ -98,12 +99,12 @@ export default function ChiefInjuriesPage() {
   const totalCost = injuries.reduce((sum, inj) => sum + (inj.cost_impact || 0), 0)
   const activeInjuries = injuries.filter(inj => !inj.return_date).length
 
-  // FMS Correlation Analysis
+  // FMS Correlation Analysis (High Risk = FMS < 15)
   const injuriesWithFMS = injuries.filter(inj => inj.fms_score_at_time !== null)
-  const lowFMSInjuries = injuriesWithFMS.filter(inj => inj.fms_score_at_time! < 14).length
-  const highFMSInjuries = injuriesWithFMS.filter(inj => inj.fms_score_at_time! >= 14).length
+  const highRiskInjuries = injuriesWithFMS.filter(inj => getRiskLevel(inj.fms_score_at_time!) === 'high').length
+  const lowRiskInjuries = injuriesWithFMS.filter(inj => getRiskLevel(inj.fms_score_at_time!) !== 'high').length
   const correlationPercentage = injuriesWithFMS.length > 0
-    ? Math.round((lowFMSInjuries / injuriesWithFMS.length) * 100)
+    ? Math.round((highRiskInjuries / injuriesWithFMS.length) * 100)
     : 0
 
   // Protocol Adherence Analysis
@@ -261,12 +262,12 @@ export default function ChiefInjuriesPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Low FMS Score Injuries */}
+              {/* High Risk FMS Score Injuries */}
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-red-400">Low FMS (&lt;14)</h4>
+                  <h4 className="font-semibold text-red-400">High Risk FMS (&lt;15)</h4>
                   <Badge variant="destructive" className="bg-red-600">
-                    {lowFMSInjuries} injuries
+                    {highRiskInjuries} injuries
                   </Badge>
                 </div>
                 <p className="text-2xl font-bold text-white mb-1">{correlationPercentage}%</p>
@@ -276,12 +277,12 @@ export default function ChiefInjuriesPage() {
                 </p>
               </div>
 
-              {/* High FMS Score Injuries */}
+              {/* Lower Risk FMS Score Injuries */}
               <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-green-400">High FMS (≥14)</h4>
+                  <h4 className="font-semibold text-green-400">Lower Risk FMS (≥15)</h4>
                   <Badge className="bg-green-600 text-white">
-                    {highFMSInjuries} injuries
+                    {lowRiskInjuries} injuries
                   </Badge>
                 </div>
                 <p className="text-2xl font-bold text-white mb-1">{100 - correlationPercentage}%</p>
@@ -401,11 +402,7 @@ export default function ChiefInjuriesPage() {
                           {injury.fms_score_at_time !== null ? (
                             <Badge
                               variant="outline"
-                              className={
-                                injury.fms_score_at_time < 14
-                                  ? 'bg-red-500/20 text-red-400 border-red-500/30'
-                                  : 'bg-green-500/20 text-green-400 border-green-500/30'
-                              }
+                              className={getRiskBadgeClasses(injury.fms_score_at_time)}
                             >
                               {injury.fms_score_at_time}/21
                             </Badge>

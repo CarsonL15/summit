@@ -15,6 +15,7 @@ import {
   Clock, Target, ChevronRight, Mail
 } from 'lucide-react'
 import { Database } from '@/types/database'
+import { getRiskTextColor } from '@/lib/utils/fms'
 
 type UserData = Database['public']['Tables']['users']['Row']
 type StationData = Database['public']['Tables']['stations']['Row']
@@ -224,6 +225,53 @@ export default function ClinicTeamPage() {
       </header>
 
       <div className="container mx-auto px-4 py-6 sm:py-8">
+        {/* Department Header */}
+        <Card className="bg-gradient-to-r from-fire-gold/20 to-fire-red/20 border-fire-gold/30 mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-fire-gold/20 rounded-lg">
+                  <Shield className="h-6 w-6 text-fire-gold" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">Spokane Valley Fire Department</h2>
+                  <p className="text-sm text-gray-400">SVFD</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-white">{stationUsers.length}</p>
+                <p className="text-sm text-gray-400">Total Personnel</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Station Card */}
+        <Card className="bg-white/5 border-white/10 mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-fire-red/20 rounded-lg">
+                  <Activity className="h-5 w-5 text-fire-red" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-white">{station?.name}</h3>
+                  <div className="flex items-center gap-4 mt-1 flex-wrap">
+                    <Badge variant="outline" className="text-xs text-fire-gold border-fire-gold/30">
+                      <Shield className="h-3 w-3 mr-1" />
+                      {chiefCount} Chiefs
+                    </Badge>
+                    <Badge variant="outline" className="text-xs text-fire-red border-fire-red/30">
+                      <Users className="h-3 w-3 mr-1" />
+                      {firefighterCount} Firefighters
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <AnimatedCard className="bg-white/5 border-white/10" delay={0}>
@@ -334,10 +382,7 @@ export default function ClinicTeamPage() {
                             <span>Points: {user.points}</span>
                             <span>Streak: {user.current_streak}d</span>
                             {user.last_fms_score !== undefined && (
-                              <span className={
-                                user.last_fms_score >= 17 ? 'text-green-400' :
-                                user.last_fms_score >= 14 ? 'text-yellow-400' : 'text-red-400'
-                              }>
+                              <span className={getRiskTextColor(user.last_fms_score)}>
                                 FMS: {user.last_fms_score}/21
                               </span>
                             )}

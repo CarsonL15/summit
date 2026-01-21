@@ -16,6 +16,7 @@ import {
   Target, Zap, Star, AlertTriangle, User
 } from 'lucide-react'
 import { Database } from '@/types/database'
+import { getRiskLevel, getRiskTextColor } from '@/lib/utils/fms'
 
 type UserData = Database['public']['Tables']['users']['Row']
 type StationData = Database['public']['Tables']['stations']['Row']
@@ -29,14 +30,9 @@ interface FirefighterWithStats extends UserData {
 
 interface StationStats {
   total_firefighters: number
-  active_today: number
-  average_streak: number
-  total_points: number
-  active_series_count: number
-  avg_completion_rate: number
-  total_injuries: number
-  days_missed: number
   high_risk_count: number
+  avg_fms_score: number
+  avg_completion_rate: number
 }
 
 export default function ChiefDashboard() {
@@ -44,14 +40,9 @@ export default function ChiefDashboard() {
   const [station, setStation] = useState<StationData | null>(null)
   const [stats, setStats] = useState<StationStats>({
     total_firefighters: 0,
-    active_today: 0,
-    average_streak: 0,
-    total_points: 0,
-    active_series_count: 0,
-    avg_completion_rate: 0,
-    total_injuries: 0,
-    days_missed: 0,
-    high_risk_count: 0
+    high_risk_count: 0,
+    avg_fms_score: 0,
+    avg_completion_rate: 0
   })
   const [leaderboard, setLeaderboard] = useState<FirefighterWithStats[]>([])
   const [recentAssessments, setRecentAssessments] = useState<FMSScoreData[]>([])
@@ -114,19 +105,7 @@ export default function ChiefDashboard() {
           .order('points', { ascending: false })
 
         if (firefighters) {
-          // Calculate stats
           const today = new Date().toISOString().split('T')[0]
-          const activeToday = firefighters.filter(f => f.last_activity_date === today).length
-          const avgStreak = firefighters.reduce((sum, f) => sum + f.current_streak, 0) / (firefighters.length || 1)
-          const totalPoints = firefighters.reduce((sum, f) => sum + f.points, 0)
-
-          // Get active series count
-          const { count: activeSeries } = await supabase
-            .from('series_assignments')
-            .select('*', { count: 'exact', head: true })
-            .in('user_id', firefighters.map(f => f.id))
-            .eq('completed', false)
-            .gte('end_date', today)
 
           // Get average completion rate
           const { data: assignments } = await supabase
@@ -139,19 +118,7 @@ export default function ChiefDashboard() {
             ? assignments.reduce((sum, a) => sum + (a.completion_percentage || 0), 0) / assignments.length
             : 0
 
-          // Get injury statistics (last 90 days)
-          const ninetyDaysAgo = new Date()
-          ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
-          const { data: injuries } = await supabase
-            .from('injuries')
-            .select('days_out, user_id')
-            .in('user_id', firefighters.map(f => f.id))
-            .gte('injury_date', ninetyDaysAgo.toISOString().split('T')[0])
-
-          const totalInjuries = injuries?.length || 0
-          const daysMissed = injuries?.reduce((sum, inj) => sum + (inj.days_out || 0), 0) || 0
-
-          // Get high-risk firefighters (FMS < 14)
+          // Get latest FMS scores for high-risk count and avg FMS
           const { data: latestFMS } = await supabase
             .from('fms_scores')
             .select('user_id, total_score')
@@ -159,24 +126,24 @@ export default function ChiefDashboard() {
             .order('assessed_date', { ascending: false })
 
           // Get unique users and their latest scores
-          const latestScoreMap = new Map()
+          const latestScoreMap = new Map<string, number>()
           latestFMS?.forEach(score => {
             if (!latestScoreMap.has(score.user_id)) {
               latestScoreMap.set(score.user_id, score.total_score)
             }
           })
-          const highRiskCount = Array.from(latestScoreMap.values()).filter(score => score < 14).length
+
+          const allScores = Array.from(latestScoreMap.values())
+          const highRiskCount = allScores.filter(score => getRiskLevel(score) === 'high').length
+          const avgFmsScore = allScores.length > 0
+            ? Math.round((allScores.reduce((sum, s) => sum + s, 0) / allScores.length) * 10) / 10
+            : 0
 
           setStats({
             total_firefighters: firefighters.length,
-            active_today: activeToday,
-            average_streak: Math.round(avgStreak * 10) / 10,
-            total_points: totalPoints,
-            active_series_count: activeSeries || 0,
-            avg_completion_rate: Math.round(avgCompletion),
-            total_injuries: totalInjuries,
-            days_missed: daysMissed,
-            high_risk_count: highRiskCount
+            high_risk_count: highRiskCount,
+            avg_fms_score: avgFmsScore,
+            avg_completion_rate: Math.round(avgCompletion)
           })
 
           // Get top 10 for leaderboard with additional info
@@ -305,148 +272,59 @@ export default function ChiefDashboard() {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 sm:py-8">
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <Link href="/chief/reports">
-            <Button className="w-full h-auto py-3 sm:py-4 bg-fire-red hover:bg-red-700 text-white flex flex-col sm:flex-row items-center justify-center sm:justify-start">
-              <FileText className="mb-1 sm:mb-0 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-              <div className="text-center sm:text-left">
-                <p className="font-semibold text-xs sm:text-sm">Reports</p>
-                <p className="text-xs opacity-90 hidden sm:block">View assessments</p>
-              </div>
-            </Button>
-          </Link>
-          <Link href="/chief/firefighters">
-            <Button className="w-full h-auto py-3 sm:py-4 bg-blue-600 hover:bg-blue-700 text-white flex flex-col sm:flex-row items-center justify-center sm:justify-start">
-              <Users className="mb-1 sm:mb-0 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-              <div className="text-center sm:text-left">
-                <p className="font-semibold text-xs sm:text-sm">Team</p>
-                <p className="text-xs opacity-90 hidden sm:block">Manage team</p>
-              </div>
-            </Button>
-          </Link>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <Link href="/chief/analytics">
-            <Button className="w-full h-auto py-3 sm:py-4 bg-green-600 hover:bg-green-700 text-white flex flex-col sm:flex-row items-center justify-center sm:justify-start">
-              <TrendingUp className="mb-1 sm:mb-0 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+            <Button className="w-full h-auto py-4 sm:py-5 bg-gradient-to-r from-fire-red to-fire-gold hover:from-red-700 hover:to-yellow-600 text-white flex flex-col sm:flex-row items-center justify-center sm:justify-start">
+              <TrendingUp className="mb-1 sm:mb-0 sm:mr-2 h-5 w-5 sm:h-6 sm:w-6" />
               <div className="text-center sm:text-left">
-                <p className="font-semibold text-xs sm:text-sm">Analytics</p>
-                <p className="text-xs opacity-90 hidden sm:block">Performance</p>
+                <p className="font-semibold text-sm sm:text-base">Analytics</p>
+                <p className="text-xs opacity-90 hidden sm:block">Team, Reports & Performance</p>
               </div>
             </Button>
           </Link>
           <Link href="/chief/injuries">
-            <Button className="w-full h-auto py-3 sm:py-4 bg-orange-600 hover:bg-orange-700 text-white flex flex-col sm:flex-row items-center justify-center sm:justify-start">
-              <AlertTriangle className="mb-1 sm:mb-0 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+            <Button className="w-full h-auto py-4 sm:py-5 bg-orange-600 hover:bg-orange-700 text-white flex flex-col sm:flex-row items-center justify-center sm:justify-start">
+              <AlertTriangle className="mb-1 sm:mb-0 sm:mr-2 h-5 w-5 sm:h-6 sm:w-6" />
               <div className="text-center sm:text-left">
-                <p className="font-semibold text-xs sm:text-sm">Injuries</p>
+                <p className="font-semibold text-sm sm:text-base">Injuries</p>
                 <p className="text-xs opacity-90 hidden sm:block">Track & prevent</p>
               </div>
             </Button>
           </Link>
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          <AnimatedCard className="bg-white/5 border-white/10" delay={0}>
-            <AnimatedCardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <Users className="h-4 w-4 text-blue-400" />
-                <span className="text-xl font-bold text-white">{stats.total_firefighters}</span>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">Total Firefighters</p>
-            </AnimatedCardContent>
-          </AnimatedCard>
-
-          <AnimatedCard className="bg-white/5 border-white/10" delay={0.05}>
-            <AnimatedCardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <Activity className="h-4 w-4 text-green-400" />
-                <span className="text-xl font-bold text-white">{stats.active_today}</span>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">Active Today</p>
-            </AnimatedCardContent>
-          </AnimatedCard>
-
-          <AnimatedCard className="bg-white/5 border-white/10" delay={0.1}>
-            <AnimatedCardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <Flame className="h-4 w-4 text-fire-red" />
-                <span className="text-xl font-bold text-white">{stats.average_streak}</span>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">Avg Streak</p>
-            </AnimatedCardContent>
-          </AnimatedCard>
-
-          <AnimatedCard className="bg-white/5 border-white/10" delay={0.15}>
-            <AnimatedCardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <Trophy className="h-4 w-4 text-fire-gold" />
-                <span className="text-xl font-bold text-white">{stats.total_points}</span>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">Total Points</p>
-            </AnimatedCardContent>
-          </AnimatedCard>
-
-          <AnimatedCard className="bg-white/5 border-white/10" delay={0.2}>
-            <AnimatedCardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <Zap className="h-4 w-4 text-yellow-400" />
-                <span className="text-xl font-bold text-white">{stats.active_series_count}</span>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">Active Series</p>
-            </AnimatedCardContent>
-          </AnimatedCard>
-
-          <AnimatedCard className="bg-white/5 border-white/10" delay={0.25}>
-            <AnimatedCardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <Target className="h-4 w-4 text-purple-400" />
-                <span className="text-xl font-bold text-white">{stats.avg_completion_rate}%</span>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">Avg Completion</p>
-            </AnimatedCardContent>
-          </AnimatedCard>
-        </div>
-
-        {/* Injury Prevention Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <AnimatedCard className="bg-red-500/10 border-red-500/30" delay={0.3}>
-            <AnimatedCardContent className="p-4">
+        {/* Key Stats - 3 most important metrics */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          <AnimatedCard className="bg-red-500/10 border-red-500/30" delay={0}>
+            <AnimatedCardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-2">
-                <AlertTriangle className="h-5 w-5 text-red-400" />
-                <span className="text-2xl font-bold text-white">{stats.total_injuries}</span>
+                <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-400" />
+                <span className="text-2xl sm:text-3xl font-bold text-white">{stats.high_risk_count}</span>
               </div>
-              <p className="text-sm text-gray-300 mb-1">Injuries (90 days)</p>
-              <Link href="/chief/injuries">
-                <Button variant="link" size="sm" className="text-red-400 hover:text-red-300 p-0 h-auto text-xs">
-                  View Details →
-                </Button>
-              </Link>
+              <p className="text-sm sm:text-base text-gray-300">High Risk</p>
+              <p className="text-xs text-red-400">FMS &lt;15</p>
             </AnimatedCardContent>
           </AnimatedCard>
 
-          <AnimatedCard className="bg-orange-500/10 border-orange-500/30" delay={0.35}>
-            <AnimatedCardContent className="p-4">
+          <AnimatedCard className="bg-blue-500/10 border-blue-500/30" delay={0.05}>
+            <AnimatedCardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-2">
-                <Clock className="h-5 w-5 text-orange-400" />
-                <span className="text-2xl font-bold text-white">{stats.days_missed}</span>
+                <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-blue-400" />
+                <span className="text-2xl sm:text-3xl font-bold text-white">{stats.avg_fms_score}</span>
               </div>
-              <p className="text-sm text-gray-300 mb-1">Days Missed (90 days)</p>
-              <p className="text-xs text-gray-500">
-                Avg: {stats.total_injuries > 0 ? Math.round((stats.days_missed / stats.total_injuries) * 10) / 10 : 0} days/injury
-              </p>
+              <p className="text-sm sm:text-base text-gray-300">Avg FMS</p>
+              <p className="text-xs text-blue-400">out of 21</p>
             </AnimatedCardContent>
           </AnimatedCard>
 
-          <AnimatedCard className="bg-yellow-500/10 border-yellow-500/30" delay={0.4}>
-            <AnimatedCardContent className="p-4">
+          <AnimatedCard className="bg-green-500/10 border-green-500/30" delay={0.1}>
+            <AnimatedCardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-2">
-                <Shield className="h-5 w-5 text-yellow-400" />
-                <span className="text-2xl font-bold text-white">{stats.high_risk_count}</span>
+                <Target className="h-5 w-5 sm:h-6 sm:w-6 text-green-400" />
+                <span className="text-2xl sm:text-3xl font-bold text-white">{stats.avg_completion_rate}%</span>
               </div>
-              <p className="text-sm text-gray-300 mb-1">High Risk (FMS &lt;14)</p>
-              <p className="text-xs text-yellow-400">
-                {stats.total_firefighters > 0 ? Math.round((stats.high_risk_count / stats.total_firefighters) * 100) : 0}% of team
-              </p>
+              <p className="text-sm sm:text-base text-gray-300">Compliance</p>
+              <p className="text-xs text-green-400">Program completion</p>
             </AnimatedCardContent>
           </AnimatedCard>
         </div>
@@ -555,13 +433,9 @@ export default function ChiefDashboard() {
                             {assessment.assessed_date && new Date(assessment.assessed_date).toLocaleDateString()}
                           </p>
                         </div>
-                        <div className={`text-2xl font-bold ${
-                          assessment.total_score >= 17 ? 'text-green-400' :
-                          assessment.total_score >= 14 ? 'text-yellow-400' :
-                          'text-red-400'
-                        }`}>
-                          {assessment.total_score >= 17 ? '✓' :
-                           assessment.total_score >= 14 ? '⚠' : '✗'}
+                        <div className={`text-2xl font-bold ${getRiskTextColor(assessment.total_score)}`}>
+                          {getRiskLevel(assessment.total_score) === 'low' ? '✓' :
+                           getRiskLevel(assessment.total_score) === 'moderate' ? '⚠' : '✗'}
                         </div>
                       </div>
                       {assessment.notes && (
