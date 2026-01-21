@@ -469,12 +469,12 @@ export default function ChiefDashboard() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/chief/series">
-                  <Button size="lg" className="bg-white text-slate-900 hover:bg-gray-100">
+                  <Button size="lg" className="bg-fire-gold text-black hover:bg-yellow-500">
                     Manage Training Programs
                   </Button>
                 </Link>
                 <Link href="/chief/analytics">
-                  <Button size="lg" variant="outline" className="text-white border-white/20 hover:bg-white/10">
+                  <Button size="lg" className="bg-white/10 text-white border border-white/20 hover:bg-white/20">
                     View Analytics
                   </Button>
                 </Link>

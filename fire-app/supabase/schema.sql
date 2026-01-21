@@ -51,6 +51,9 @@ CREATE TABLE fms_scores (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Series type enum
+CREATE TYPE series_type AS ENUM ('rehab', 'strength_conditioning');
+
 -- Series table (3-week mini-series programs)
 CREATE TABLE series (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -59,6 +62,8 @@ CREATE TABLE series (
   duration_weeks INTEGER DEFAULT 3,
   target_area VARCHAR(100), -- 'hip', 'shoulder', 'core', etc.
   difficulty_level VARCHAR(20) CHECK (difficulty_level IN ('beginner', 'intermediate', 'advanced')),
+  series_type series_type DEFAULT 'strength_conditioning', -- rehab (7 days/week) vs S&C (3x/week)
+  days_per_week INTEGER DEFAULT 3, -- 7 for rehab, 3 for S&C
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -76,6 +81,7 @@ CREATE TABLE exercises (
   duration_seconds INTEGER,
   category VARCHAR(100), -- 'mobility', 'strength', 'stability', etc.
   equipment_needed VARCHAR(255),
+  tags TEXT[] DEFAULT '{}', -- Array of tags for filtering (e.g., 'hip', 'beginner', 'no-equipment')
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -157,6 +163,7 @@ CREATE TABLE injuries (
   followed_protocol BOOLEAN DEFAULT FALSE, -- Were they doing their exercises?
   severity VARCHAR(20) CHECK (severity IN ('minor', 'moderate', 'severe')),
   cost_impact DECIMAL(10,2), -- Estimated cost (medical + lost work)
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'closed')), -- For filtering active vs closed injuries
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -174,6 +181,9 @@ CREATE INDEX idx_exercise_completions_date ON exercise_completions(completed_dat
 CREATE INDEX idx_injuries_user ON injuries(user_id);
 CREATE INDEX idx_injuries_date ON injuries(injury_date);
 CREATE INDEX idx_injuries_fms_score ON injuries(fms_score_at_time);
+CREATE INDEX idx_injuries_status ON injuries(status);
+CREATE INDEX idx_series_type ON series(series_type);
+CREATE INDEX idx_exercises_tags ON exercises USING GIN(tags);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()

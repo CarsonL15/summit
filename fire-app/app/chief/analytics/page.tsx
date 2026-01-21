@@ -57,7 +57,7 @@ function AnalyticsContent() {
   const [selectedStation, setSelectedStation] = useState<StationWithStats | null>(null)
   const [firefighters, setFirefighters] = useState<FirefighterWithDetails[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [filter, setFilter] = useState<'all' | 'high-risk' | 'needs-assessment'>('all')
+  const [filter, setFilter] = useState<'all' | 'high' | 'moderate' | 'low' | 'needs-assessment'>('all')
 
   const router = useRouter()
   const supabase = createClient()
@@ -240,8 +240,14 @@ function AnalyticsContent() {
     if (!matchesSearch) return false
 
     // Status filter
-    if (filter === 'high-risk') {
+    if (filter === 'high') {
       return ff.lastFMS && getRiskLevel(ff.lastFMS.total_score) === 'high'
+    }
+    if (filter === 'moderate') {
+      return ff.lastFMS && getRiskLevel(ff.lastFMS.total_score) === 'moderate'
+    }
+    if (filter === 'low') {
+      return ff.lastFMS && getRiskLevel(ff.lastFMS.total_score) === 'low'
     }
     if (filter === 'needs-assessment') {
       if (!ff.lastFMS) return true
@@ -404,11 +410,168 @@ function AnalyticsContent() {
         {/* Level 2: Station Detail */}
         {selectedStation && (
           <>
+            {/* Per-Station Stats Section */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <AnimatedCard className="bg-white/5 border-white/10" delay={0}>
+                <AnimatedCardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-500/20 rounded-lg">
+                      <Users className="h-5 w-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">{firefighters.length}</p>
+                      <p className="text-xs text-gray-400">Active Personnel</p>
+                    </div>
+                  </div>
+                </AnimatedCardContent>
+              </AnimatedCard>
+
+              <AnimatedCard className="bg-white/5 border-white/10" delay={0.05}>
+                <AnimatedCardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-fire-gold/20 rounded-lg">
+                      <Target className="h-5 w-5 text-fire-gold" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">
+                        {firefighters.length > 0
+                          ? Math.round(firefighters.reduce((sum, f) => sum + (f.points || 0), 0) / firefighters.length)
+                          : 0}
+                      </p>
+                      <p className="text-xs text-gray-400">Avg Points</p>
+                    </div>
+                  </div>
+                </AnimatedCardContent>
+              </AnimatedCard>
+
+              <AnimatedCard className="bg-white/5 border-white/10" delay={0.1}>
+                <AnimatedCardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-500/20 rounded-lg">
+                      <Flame className="h-5 w-5 text-orange-400" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">
+                        {firefighters.length > 0
+                          ? Math.round(firefighters.reduce((sum, f) => sum + (f.current_streak || 0), 0) / firefighters.length)
+                          : 0}
+                      </p>
+                      <p className="text-xs text-gray-400">Avg Streak (days)</p>
+                    </div>
+                  </div>
+                </AnimatedCardContent>
+              </AnimatedCard>
+
+              <AnimatedCard className="bg-white/5 border-white/10" delay={0.15}>
+                <AnimatedCardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-500/20 rounded-lg">
+                      <Activity className="h-5 w-5 text-green-400" />
+                    </div>
+                    <div>
+                      <p className={`text-2xl font-bold ${selectedStation.avgFmsScore >= 18 ? 'text-green-400' : selectedStation.avgFmsScore >= 15 ? 'text-yellow-400' : 'text-red-400'}`}>
+                        {selectedStation.avgFmsScore}/21
+                      </p>
+                      <p className="text-xs text-gray-400">Avg FMS Score</p>
+                    </div>
+                  </div>
+                </AnimatedCardContent>
+              </AnimatedCard>
+            </div>
+
+            {/* Distribution Charts */}
+            <div className="grid md:grid-cols-2 gap-4 mb-6">
+              {/* Streak Distribution */}
+              <Card className="bg-white/5 border-white/10">
+                <CardContent className="p-4">
+                  <h4 className="text-sm font-semibold text-white mb-3">Streak Distribution</h4>
+                  <div className="space-y-2">
+                    {[
+                      { label: '0 days', min: 0, max: 0, color: 'bg-gray-500' },
+                      { label: '1-7 days', min: 1, max: 7, color: 'bg-yellow-500' },
+                      { label: '8-14 days', min: 8, max: 14, color: 'bg-orange-500' },
+                      { label: '15-30 days', min: 15, max: 30, color: 'bg-green-500' },
+                      { label: '30+ days', min: 31, max: Infinity, color: 'bg-blue-500' }
+                    ].map(bucket => {
+                      const count = firefighters.filter(f => {
+                        const streak = f.current_streak || 0
+                        return streak >= bucket.min && streak <= bucket.max
+                      }).length
+                      const percentage = firefighters.length > 0 ? (count / firefighters.length) * 100 : 0
+                      return (
+                        <div key={bucket.label} className="flex items-center gap-3">
+                          <span className="text-xs text-gray-400 w-20">{bucket.label}</span>
+                          <div className="flex-1 bg-white/10 rounded-full h-3 overflow-hidden">
+                            <div
+                              className={`h-full ${bucket.color} transition-all duration-500`}
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-white w-8 text-right">{count}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* FMS Score Distribution */}
+              <Card className="bg-white/5 border-white/10">
+                <CardContent className="p-4">
+                  <h4 className="text-sm font-semibold text-white mb-3">FMS Score Distribution</h4>
+                  <div className="space-y-2">
+                    {[
+                      { label: '0-10 (Critical)', min: 0, max: 10, color: 'bg-red-600' },
+                      { label: '11-14 (High Risk)', min: 11, max: 14, color: 'bg-red-400' },
+                      { label: '15-17 (Moderate)', min: 15, max: 17, color: 'bg-yellow-500' },
+                      { label: '18-21 (Low Risk)', min: 18, max: 21, color: 'bg-green-500' }
+                    ].map(bucket => {
+                      const count = firefighters.filter(f => {
+                        if (!f.lastFMS) return bucket.label.includes('Critical')
+                        const score = f.lastFMS.total_score
+                        return score >= bucket.min && score <= bucket.max
+                      }).length
+                      const percentage = firefighters.length > 0 ? (count / firefighters.length) * 100 : 0
+                      return (
+                        <div key={bucket.label} className="flex items-center gap-3">
+                          <span className="text-xs text-gray-400 w-28">{bucket.label}</span>
+                          <div className="flex-1 bg-white/10 rounded-full h-3 overflow-hidden">
+                            <div
+                              className={`h-full ${bucket.color} transition-all duration-500`}
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-white w-8 text-right">{count}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* High Risk Warning Banner */}
+            {selectedStation.highRiskCount > 0 && (
+              <Card className="bg-red-500/10 border-red-500/30 mb-6">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-400">
+                      {selectedStation.highRiskCount} personnel at high injury risk
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Consider prioritizing FMS-based corrective exercises for these individuals
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Search and Filters */}
             <Card className="bg-white/5 border-white/10 mb-6">
               <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1 relative">
+                <div className="flex flex-col gap-4">
+                  <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
                       type="text"
@@ -418,7 +581,7 @@ function AnalyticsContent() {
                       className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-500"
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       onClick={() => setFilter('all')}
@@ -428,10 +591,24 @@ function AnalyticsContent() {
                     </Button>
                     <Button
                       size="sm"
-                      onClick={() => setFilter('high-risk')}
-                      className={filter === 'high-risk' ? 'bg-red-600 text-white' : 'bg-white/5 text-white border border-white/20'}
+                      onClick={() => setFilter('high')}
+                      className={filter === 'high' ? 'bg-red-600 text-white' : 'bg-white/5 text-white border border-white/20'}
                     >
-                      High Risk ({firefighters.filter(f => f.lastFMS && getRiskLevel(f.lastFMS.total_score) === 'high').length})
+                      High ({firefighters.filter(f => f.lastFMS && getRiskLevel(f.lastFMS.total_score) === 'high').length})
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => setFilter('moderate')}
+                      className={filter === 'moderate' ? 'bg-yellow-600 text-white' : 'bg-white/5 text-white border border-white/20'}
+                    >
+                      Moderate ({firefighters.filter(f => f.lastFMS && getRiskLevel(f.lastFMS.total_score) === 'moderate').length})
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => setFilter('low')}
+                      className={filter === 'low' ? 'bg-green-600 text-white' : 'bg-white/5 text-white border border-white/20'}
+                    >
+                      Low ({firefighters.filter(f => f.lastFMS && getRiskLevel(f.lastFMS.total_score) === 'low').length})
                     </Button>
                     <Button
                       size="sm"
@@ -452,8 +629,22 @@ function AnalyticsContent() {
                 const daysSince = getDaysSinceAssessment(ff.lastAssessedDate)
                 const needsAssessment = !ff.lastFMS || (daysSince !== null && daysSince > 90)
 
+                // Determine click destination
+                const handleCardClick = () => {
+                  if (ff.lastFMS) {
+                    router.push(`/chief/assessment/review/${ff.lastFMS.id}`)
+                  } else {
+                    // No FMS - go to assessment page to create one
+                    router.push(`/chief/assessment?user=${ff.id}`)
+                  }
+                }
+
                 return (
-                  <Card key={ff.id} className="bg-white/5 border-white/10 hover:bg-white/[0.07] transition-colors">
+                  <Card
+                    key={ff.id}
+                    className="bg-white/5 border-white/10 hover:bg-white/[0.07] transition-colors cursor-pointer"
+                    onClick={handleCardClick}
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -468,6 +659,16 @@ function AnalyticsContent() {
                               <p className="font-semibold text-white truncate">{ff.name}</p>
                               {ff.role === 'chief' && (
                                 <Badge className="text-xs bg-fire-gold/20 text-fire-gold border-fire-gold/30">Chief</Badge>
+                              )}
+                              {ff.lastFMS && (
+                                <Badge className={`text-xs ${
+                                  getRiskLevel(ff.lastFMS.total_score) === 'high' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                                  getRiskLevel(ff.lastFMS.total_score) === 'moderate' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                                  'bg-green-500/20 text-green-400 border-green-500/30'
+                                }`}>
+                                  {getRiskLevel(ff.lastFMS.total_score) === 'high' ? 'High Risk' :
+                                   getRiskLevel(ff.lastFMS.total_score) === 'moderate' ? 'Moderate' : 'Low Risk'}
+                                </Badge>
                               )}
                             </div>
                             <div className="flex items-center gap-4 mt-1 text-sm text-gray-400 flex-wrap">
@@ -487,7 +688,7 @@ function AnalyticsContent() {
                           </div>
                         </div>
 
-                        {/* Program Status & Action */}
+                        {/* Program Status & Arrow */}
                         <div className="flex items-center gap-3 flex-shrink-0">
                           {ff.activeSeries ? (
                             <div className="text-right hidden sm:block">
@@ -496,13 +697,12 @@ function AnalyticsContent() {
                                 Week {ff.activeSeries.current_week} • {ff.activeSeries.completion_percentage}%
                               </p>
                             </div>
+                          ) : !ff.lastFMS ? (
+                            <span className="text-xs text-orange-400 hidden sm:block">Needs Assessment</span>
                           ) : (
-                            <Link href={`/chief/series/assign?user=${ff.id}`}>
-                              <Button size="sm" className="bg-fire-red hover:bg-red-700 text-white">
-                                Assign
-                              </Button>
-                            </Link>
+                            <span className="text-xs text-gray-400 hidden sm:block">No Program</span>
                           )}
+                          <ChevronRight className="h-5 w-5 text-gray-500" />
                         </div>
                       </div>
                     </CardContent>
