@@ -12,6 +12,7 @@ import {
   Activity, ArrowLeft, CheckCircle, Target, Clock, Star, Calendar, Dumbbell
 } from 'lucide-react'
 import { Database } from '@/types/database'
+import { getRiskLevel, getRiskTextColor, getRiskLabel } from '@/lib/utils/fms'
 
 type FMSScoreData = Database['public']['Tables']['fms_scores']['Row']
 type UserData = Database['public']['Tables']['users']['Row']
@@ -249,17 +250,9 @@ export default function ClinicSeriesAssignmentReview() {
     }
   }
 
-  const getScoreColor = (score: number) => {
-    if (score >= 17) return 'text-green-400'
-    if (score >= 14) return 'text-yellow-400'
-    return 'text-red-400'
-  }
-
-  const getScoreLabel = (score: number) => {
-    if (score >= 17) return 'Good'
-    if (score >= 14) return 'Average'
-    return 'Needs Improvement'
-  }
+  // Use centralized FMS utility functions
+  const getScoreColor = getRiskTextColor
+  const getScoreLabel = getRiskLabel
 
   if (loading) {
     return (

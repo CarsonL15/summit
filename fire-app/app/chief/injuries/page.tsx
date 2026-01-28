@@ -14,8 +14,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Flame, AlertTriangle, TrendingDown, DollarSign, Calendar,
-  ChevronLeft, Users, Activity, Shield, CheckCircle, XCircle,
-  Plus, X, ShieldCheck, Target, TrendingUp
+  ChevronLeft, Activity, Shield, CheckCircle, XCircle,
+  Plus, X
 } from 'lucide-react'
 import { Database } from '@/types/database'
 import { getRiskLevel, getRiskBadgeClasses } from '@/lib/utils/fms'
@@ -41,6 +41,7 @@ interface InjuryFormData {
 
 export default function ChiefInjuriesPage() {
   const [injuries, setInjuries] = useState<InjuryWithUser[]>([])
+  const [totalActiveCount, setTotalActiveCount] = useState(0) // Always track total active injuries
   const [firefighters, setFirefighters] = useState<UserData[]>([])
   const [fmsScores, setFmsScores] = useState<Map<string, FMSScoreData>>(new Map())
   const [loading, setLoading] = useState(true)
@@ -110,21 +111,8 @@ export default function ChiefInjuriesPage() {
         }
       }
 
-      // Build date filter
-      let dateFilter = ''
-      const today = new Date()
-      if (timeRange === '30days') {
-        const thirtyDaysAgo = new Date(today)
-        thirtyDaysAgo.setDate(today.getDate() - 30)
-        dateFilter = thirtyDaysAgo.toISOString().split('T')[0]
-      } else if (timeRange === '90days') {
-        const ninetyDaysAgo = new Date(today)
-        ninetyDaysAgo.setDate(today.getDate() - 90)
-        dateFilter = ninetyDaysAgo.toISOString().split('T')[0]
-      }
-
-      // Get injuries with user data
-      let query = supabase
+      // Get all injuries with user data
+      const { data: injuryData } = await supabase
         .from('injuries')
         .select(`
           *,
@@ -132,21 +120,42 @@ export default function ChiefInjuriesPage() {
         `)
         .order('injury_date', { ascending: false })
 
-      // Apply active filter (only active injuries)
-      if (timeRange === 'active') {
-        query = query.or('return_date.is.null,status.eq.active')
-      } else if (dateFilter) {
-        query = query.gte('injury_date', dateFilter)
-      }
-
-      const { data: injuryData } = await query
-
       if (injuryData) {
         // Filter to only this station's users
         const stationInjuries = injuryData.filter(
           (inj: any) => inj.user?.station_id === currentUser.station_id
         )
-        setInjuries(stationInjuries as InjuryWithUser[])
+
+        // Always calculate total active count (for the Active button)
+        const activeCount = stationInjuries.filter(
+          (inj: any) => !inj.return_date && inj.status !== 'closed'
+        ).length
+        setTotalActiveCount(activeCount)
+
+        // Apply time range filter client-side for consistent behavior
+        let filteredInjuries = stationInjuries
+        const today = new Date()
+        if (timeRange === 'active') {
+          // Active = no return date and status is not 'closed'
+          filteredInjuries = stationInjuries.filter(
+            (inj: any) => !inj.return_date && inj.status !== 'closed'
+          )
+        } else if (timeRange === '30days') {
+          const thirtyDaysAgo = new Date(today)
+          thirtyDaysAgo.setDate(today.getDate() - 30)
+          filteredInjuries = stationInjuries.filter(
+            (inj: any) => new Date(inj.injury_date) >= thirtyDaysAgo
+          )
+        } else if (timeRange === '90days') {
+          const ninetyDaysAgo = new Date(today)
+          ninetyDaysAgo.setDate(today.getDate() - 90)
+          filteredInjuries = stationInjuries.filter(
+            (inj: any) => new Date(inj.injury_date) >= ninetyDaysAgo
+          )
+        }
+        // 'all' - no additional filtering needed
+
+        setInjuries(filteredInjuries as InjuryWithUser[])
       }
     } catch (error) {
       console.error('Error loading injury data:', error)
@@ -223,10 +232,15 @@ export default function ChiefInjuriesPage() {
     }
   }
 
-  // Filter injuries by active/closed status
+  // Filter injuries by active/closed status (only applies when not using 'active' time filter)
   const activeInjuries = injuries.filter(inj => !inj.return_date && inj.status !== 'closed')
   const closedInjuries = injuries.filter(inj => inj.return_date || inj.status === 'closed')
-  const displayedInjuries = showClosed ? closedInjuries : activeInjuries
+
+  // When timeRange is 'active', injuries are already filtered, show all of them
+  // Otherwise, allow toggling between active and closed
+  const displayedInjuries = timeRange === 'active'
+    ? injuries
+    : (showClosed ? closedInjuries : activeInjuries)
 
   // Calculate statistics
   const totalInjuries = injuries.length
@@ -258,11 +272,6 @@ export default function ChiefInjuriesPage() {
   const dayReduction = avgDaysNotFollowed > 0
     ? Math.round(((avgDaysNotFollowed - avgDaysFollowed) / avgDaysNotFollowed) * 100)
     : 0
-
-  // Prevention Metrics
-  const highRiskPersonnel = Array.from(fmsScores.values()).filter(score => getRiskLevel(score.total_score) === 'high').length
-  const adherenceRate = firefighters.length > 0 ? Math.round((followedProtocol / Math.max(totalInjuries, 1)) * 100) : 0
-  const estimatedPreventedInjuries = Math.round(highRiskPersonnel * 0.3 * (adherenceRate / 100)) // Rough estimate
 
   if (loading) {
     return (
@@ -319,7 +328,7 @@ export default function ChiefInjuriesPage() {
               ? 'bg-fire-red text-white hover:bg-red-700'
               : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
           >
-            Active ({activeInjuries.length})
+            Active ({totalActiveCount})
           </Button>
           <Button
             variant={timeRange === '30days' ? 'default' : 'outline'}
@@ -352,57 +361,6 @@ export default function ChiefInjuriesPage() {
             All Time
           </Button>
         </div>
-
-        {/* Prevention-Focused Metrics */}
-        <AnimatedCard className="bg-gradient-to-r from-green-600/20 to-blue-600/20 border-green-500/30 mb-6" delay={0}>
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-green-400" />
-              Prevention Focus
-            </CardTitle>
-            <CardDescription className="text-gray-400">
-              Proactive injury prevention through FMS-based protocols
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-black/20 rounded-lg p-4 text-center">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <Target className="h-4 w-4 text-blue-400" />
-                  <span className="text-2xl font-bold text-blue-400">{highRiskPersonnel}</span>
-                </div>
-                <p className="text-xs text-gray-400">High-Risk Personnel</p>
-                <p className="text-xs text-gray-500 mt-1">Identified via FMS</p>
-              </div>
-              <div className="bg-black/20 rounded-lg p-4 text-center">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <ShieldCheck className="h-4 w-4 text-green-400" />
-                  <span className="text-2xl font-bold text-green-400">{adherenceRate}%</span>
-                </div>
-                <p className="text-xs text-gray-400">Protocol Adherence</p>
-                <p className="text-xs text-gray-500 mt-1">Following exercises</p>
-              </div>
-              <div className="bg-black/20 rounded-lg p-4 text-center">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <TrendingUp className="h-4 w-4 text-green-400" />
-                  <span className="text-2xl font-bold text-green-400">~{estimatedPreventedInjuries}</span>
-                </div>
-                <p className="text-xs text-gray-400">Est. Prevented</p>
-                <p className="text-xs text-gray-500 mt-1">Injuries avoided</p>
-              </div>
-              <div className="bg-black/20 rounded-lg p-4 text-center">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <DollarSign className="h-4 w-4 text-green-400" />
-                  <span className="text-2xl font-bold text-green-400">
-                    ${Math.round(estimatedPreventedInjuries * avgDaysNotFollowed * 450 / 1000)}k
-                  </span>
-                </div>
-                <p className="text-xs text-gray-400">Est. Savings</p>
-                <p className="text-xs text-gray-500 mt-1">From prevention</p>
-              </div>
-            </div>
-          </CardContent>
-        </AnimatedCard>
 
         {/* Overview Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -558,17 +516,23 @@ export default function ChiefInjuriesPage() {
               <div>
                 <CardTitle className="text-white">Injury Log</CardTitle>
                 <CardDescription className="text-gray-400">
-                  {showClosed ? 'Closed/Returned to Duty' : 'Currently Active Injuries'}
+                  {timeRange === 'active'
+                    ? 'Currently Active Injuries'
+                    : showClosed
+                    ? 'Closed/Returned to Duty'
+                    : `Active Injuries (${timeRange === '30days' ? 'Last 30 Days' : timeRange === '90days' ? 'Last 90 Days' : 'All Time'})`}
                 </CardDescription>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowClosed(!showClosed)}
-                className="bg-black/50 text-white border-white/30 hover:bg-white/20"
-              >
-                {showClosed ? 'Show Active' : `Show Closed (${closedInjuries.length})`}
-              </Button>
+              {timeRange !== 'active' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowClosed(!showClosed)}
+                  className="bg-black/50 text-white border-white/30 hover:bg-white/20"
+                >
+                  {showClosed ? 'Show Active' : `Show Closed (${closedInjuries.length})`}
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -576,10 +540,18 @@ export default function ChiefInjuriesPage() {
               <div className="text-center py-12">
                 <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-3" />
                 <p className="text-lg font-semibold text-white mb-1">
-                  {showClosed ? 'No closed injuries' : 'No active injuries'}
+                  {timeRange === 'active'
+                    ? 'No active injuries'
+                    : showClosed
+                    ? 'No closed injuries in this period'
+                    : 'No active injuries in this period'}
                 </p>
                 <p className="text-sm text-gray-400">
-                  {showClosed ? 'All injuries are currently active' : 'Excellent work maintaining safety!'}
+                  {timeRange === 'active'
+                    ? 'Excellent work maintaining safety!'
+                    : showClosed
+                    ? 'No injuries have been closed in this time range'
+                    : 'No active injuries found for the selected time range'}
                 </p>
               </div>
             ) : (
@@ -594,7 +566,7 @@ export default function ChiefInjuriesPage() {
                       <th className="text-center py-3 px-2 text-gray-400 font-medium">Days Out</th>
                       <th className="text-center py-3 px-2 text-gray-400 font-medium">Protocol</th>
                       <th className="text-left py-3 px-2 text-gray-400 font-medium">Date</th>
-                      {!showClosed && <th className="text-center py-3 px-2 text-gray-400 font-medium">Action</th>}
+                      {(timeRange === 'active' || !showClosed) && <th className="text-center py-3 px-2 text-gray-400 font-medium">Action</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -651,7 +623,7 @@ export default function ChiefInjuriesPage() {
                         <td className="py-3 px-2 text-gray-400">
                           {new Date(injury.injury_date).toLocaleDateString()}
                         </td>
-                        {!showClosed && (
+                        {(timeRange === 'active' || !showClosed) && (
                           <td className="py-3 px-2 text-center">
                             <Button
                               size="sm"

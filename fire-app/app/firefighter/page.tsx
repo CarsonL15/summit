@@ -266,6 +266,47 @@ export default function FirefighterDashboard() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 sm:py-8">
+        {/* Welcome Section */}
+        <AnimatedCard className="bg-gradient-to-r from-fire-red/20 to-fire-gold/20 border-fire-gold/30 mb-6" delay={0}>
+          <AnimatedCardContent className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">
+                  Welcome back, {user.name.split(' ')[0]}!
+                </h2>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  {latestFmsScore !== null && (
+                    <Badge className={`text-sm ${
+                      latestFmsScore < 15 ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                      latestFmsScore < 18 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                      'bg-green-500/20 text-green-400 border-green-500/30'
+                    }`}>
+                      {latestFmsScore < 15 ? 'High Risk' : latestFmsScore < 18 ? 'Moderate Risk' : 'Low Risk'}
+                    </Badge>
+                  )}
+                  {currentSeries && (
+                    <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-sm">
+                      Week {currentSeries.assignment.current_week} of {currentSeries.duration_weeks || 3}
+                    </Badge>
+                  )}
+                  {!currentSeries && (
+                    <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30 text-sm">
+                      No Active Program
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              {latestFmsScore !== null && latestFmsScore < 15 && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 sm:max-w-xs">
+                  <p className="text-sm text-red-300">
+                    <strong className="text-red-400">Recommendation:</strong> Schedule a full evaluation with Summit to address movement limitations.
+                  </p>
+                </div>
+              )}
+            </div>
+          </AnimatedCardContent>
+        </AnimatedCard>
+
         {/* High Risk Warning Banner */}
         {latestFmsScore !== null && latestFmsScore < 14 && (
           <AnimatedCard className="bg-red-500/10 border-red-500/30 mb-6" delay={0}>

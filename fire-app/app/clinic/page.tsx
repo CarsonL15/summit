@@ -514,7 +514,7 @@ export default function ClinicDashboard() {
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-white">
+                          <p className={`text-sm font-medium ${getRiskTextColor(assessment.total_score)}`}>
                             Score: {assessment.total_score}/21
                           </p>
                           <p className="text-xs text-gray-400 mt-1">
