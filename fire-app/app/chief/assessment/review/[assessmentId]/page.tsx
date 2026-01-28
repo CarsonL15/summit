@@ -3,42 +3,36 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { AnimatedCard, AnimatedCardContent, AnimatedCardHeader, AnimatedCardTitle } from '@/components/ui/animated-card'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  Shield, Users, ArrowLeft, Save, AlertCircle, CheckCircle,
-  Activity, Target, Flame, Calendar, Clock, ChevronRight,
-  Award, Star
+  Shield, ArrowLeft, Target, Clock, Calendar, CheckCircle,
+  Activity, AlertCircle
 } from 'lucide-react'
 import { Database } from '@/types/database'
+import { getRiskTextColor, getRiskLabel } from '@/lib/utils/fms'
 
 type FMSScoreData = Database['public']['Tables']['fms_scores']['Row']
 type UserData = Database['public']['Tables']['users']['Row']
 type SeriesData = Database['public']['Tables']['series']['Row']
-type ExerciseData = Database['public']['Tables']['exercises']['Row']
+type SeriesAssignmentData = Database['public']['Tables']['series_assignments']['Row']
 
 interface AssessmentWithUser extends FMSScoreData {
   user: UserData
 }
 
-interface SeriesWithExercises extends SeriesData {
-  exercises: {
-    week_1: ExerciseData[]
-    week_2: ExerciseData[]
-    week_3: ExerciseData[]
-  }
+interface CurrentSeriesInfo {
+  assignment: SeriesAssignmentData
+  series: SeriesData
 }
 
-export default function SeriesAssignmentReview() {
+export default function ChiefAssessmentReview() {
   const [assessment, setAssessment] = useState<AssessmentWithUser | null>(null)
-  const [availableSeries, setAvailableSeries] = useState<SeriesData[]>([])
-  const [selectedSeries, setSelectedSeries] = useState<string>('')
-  const [seriesExercises, setSeriesExercises] = useState<SeriesWithExercises | null>(null)
+  const [currentSeries, setCurrentSeries] = useState<CurrentSeriesInfo | null>(null)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [stationId, setStationId] = useState<string | null>(null)
 
   const router = useRouter()
   const params = useParams()
@@ -49,18 +43,23 @@ export default function SeriesAssignmentReview() {
     loadAssessmentData()
   }, [assessmentId])
 
-  useEffect(() => {
-    if (selectedSeries) {
-      loadSeriesExercises(selectedSeries)
-    }
-  }, [selectedSeries])
-
   const loadAssessmentData = async () => {
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser()
       if (!authUser) {
         router.push('/auth/login')
         return
+      }
+
+      // Get the chief's station_id for the back button
+      const { data: chiefData } = await supabase
+        .from('users')
+        .select('station_id')
+        .eq('id', authUser.id)
+        .single()
+
+      if (chiefData?.station_id) {
+        setStationId(chiefData.station_id)
       }
 
       // Get assessment with user info
@@ -75,7 +74,7 @@ export default function SeriesAssignmentReview() {
 
       if (error || !assessmentData) {
         console.error('Error fetching assessment:', error)
-        router.push('/chief')
+        router.push('/chief/analytics')
         return
       }
 
@@ -84,39 +83,25 @@ export default function SeriesAssignmentReview() {
         user: assessmentData.user as UserData
       })
 
-      // Load available series based on weak areas
-      const weakAreas = (assessmentData.weak_areas as any)?.areas || []
+      // Get the user's current active series assignment
+      const { data: assignmentData } = await supabase
+        .from('series_assignments')
+        .select(`
+          *,
+          series:series_id (*)
+        `)
+        .eq('user_id', assessmentData.user_id)
+        .eq('completed', false)
+        .gte('end_date', new Date().toISOString().split('T')[0])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
 
-      // Get all series
-      const { data: seriesData } = await supabase
-        .from('series')
-        .select('*')
-        .order('name')
-
-      if (seriesData) {
-        // Suggest series based on weak areas
-        const suggestedSeries = seriesData.sort((a, b) => {
-          // Prioritize series that match weak areas
-          const aMatches = weakAreas.some((area: string) =>
-            a.target_area?.toLowerCase().includes(area.replace('_', ' ').toLowerCase()) ||
-            a.name.toLowerCase().includes(area.replace('_', ' ').toLowerCase())
-          )
-          const bMatches = weakAreas.some((area: string) =>
-            b.target_area?.toLowerCase().includes(area.replace('_', ' ').toLowerCase()) ||
-            b.name.toLowerCase().includes(area.replace('_', ' ').toLowerCase())
-          )
-
-          if (aMatches && !bMatches) return -1
-          if (!aMatches && bMatches) return 1
-          return 0
+      if (assignmentData && assignmentData.series) {
+        setCurrentSeries({
+          assignment: assignmentData,
+          series: assignmentData.series as SeriesData
         })
-
-        setAvailableSeries(suggestedSeries)
-
-        // Auto-select first suggested series
-        if (suggestedSeries.length > 0) {
-          setSelectedSeries(suggestedSeries[0].id)
-        }
       }
     } catch (error) {
       console.error('Error loading assessment:', error)
@@ -125,126 +110,16 @@ export default function SeriesAssignmentReview() {
     }
   }
 
-  const loadSeriesExercises = async (seriesId: string) => {
-    try {
-      // Get series details
-      const { data: seriesData } = await supabase
-        .from('series')
-        .select('*')
-        .eq('id', seriesId)
-        .single()
-
-      if (!seriesData) return
-
-      // Get exercises for each week
-      const { data: seriesExercisesData } = await supabase
-        .from('series_exercises')
-        .select(`
-          *,
-          exercise:exercise_id (*)
-        `)
-        .eq('series_id', seriesId)
-        .order('week_number')
-        .order('order_in_week')
-
-      if (seriesExercisesData) {
-        const exercises = {
-          week_1: seriesExercisesData
-            .filter(se => se.week_number === 1)
-            .map(se => se.exercise as ExerciseData)
-            .filter(Boolean),
-          week_2: seriesExercisesData
-            .filter(se => se.week_number === 2)
-            .map(se => se.exercise as ExerciseData)
-            .filter(Boolean),
-          week_3: seriesExercisesData
-            .filter(se => se.week_number === 3)
-            .map(se => se.exercise as ExerciseData)
-            .filter(Boolean)
-        }
-
-        setSeriesExercises({
-          ...seriesData,
-          exercises
-        })
-      }
-    } catch (error) {
-      console.error('Error loading series exercises:', error)
+  const handleBackToAnalytics = () => {
+    if (stationId) {
+      router.push(`/chief/analytics?station=${stationId}`)
+    } else {
+      router.push('/chief/analytics')
     }
   }
 
-  const handleAssignSeries = async () => {
-    if (!selectedSeries || !assessment) return
-
-    setSaving(true)
-    try {
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-
-      // Check for existing active series
-      const { data: existingAssignments } = await supabase
-        .from('series_assignments')
-        .select('id')
-        .eq('user_id', assessment.user_id)
-        .eq('completed', false)
-        .gte('end_date', new Date().toISOString().split('T')[0])
-
-      if (existingAssignments && existingAssignments.length > 0) {
-        const confirm = window.confirm('This firefighter already has an active series. Do you want to replace it?')
-        if (!confirm) {
-          setSaving(false)
-          return
-        }
-
-        // Mark existing as completed
-        await supabase
-          .from('series_assignments')
-          .update({ completed: true })
-          .in('id', existingAssignments.map(a => a.id))
-      }
-
-      // Create new series assignment
-      const startDate = new Date()
-      const endDate = new Date()
-      endDate.setDate(endDate.getDate() + 21) // 3-week program
-
-      const { error } = await supabase
-        .from('series_assignments')
-        .insert({
-          user_id: assessment.user_id,
-          series_id: selectedSeries,
-          assigned_by: authUser?.id,
-          fms_score_id: assessmentId,
-          start_date: startDate.toISOString().split('T')[0],
-          end_date: endDate.toISOString().split('T')[0],
-          current_week: 1,
-          completed: false,
-          completion_percentage: 0,
-          points_earned: 0
-        })
-
-      if (error) throw error
-
-      // Success - redirect to chief dashboard
-      router.push('/chief')
-    } catch (error) {
-      console.error('Error assigning series:', error)
-      alert('Failed to assign series. Please try again.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const getScoreColor = (score: number) => {
-    if (score >= 17) return 'text-green-400'
-    if (score >= 14) return 'text-yellow-400'
-    return 'text-red-400'
-  }
-
-  const getScoreLabel = (score: number) => {
-    if (score >= 17) return 'Good'
-    if (score >= 14) return 'Average'
-    return 'Needs Improvement'
-  }
+  const getScoreColor = getRiskTextColor
+  const getScoreLabel = getRiskLabel
 
   if (loading) {
     return (
@@ -275,22 +150,22 @@ export default function SeriesAssignmentReview() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push('/chief')}
-              className="text-gray-400 hover:text-white"
+              onClick={handleBackToAnalytics}
+              className="text-gray-400 hover:text-white hover:bg-white/10"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
+              Back to Analytics
             </Button>
             <div className="flex items-center gap-2">
               <Shield className="h-6 w-6 text-fire-gold" />
-              <h1 className="text-lg font-bold text-white">Assign Training Series</h1>
+              <h1 className="text-lg font-bold text-white">Assessment Review</h1>
             </div>
             <div />
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Assessment Summary */}
         <Card className="bg-white/5 border-white/10 mb-8">
           <CardHeader>
@@ -334,162 +209,118 @@ export default function SeriesAssignmentReview() {
                 <p className="text-white mt-1">{assessment.notes}</p>
               </div>
             )}
+
+            {/* Individual Scores */}
+            <div className="mt-6 pt-6 border-t border-white/10">
+              <p className="text-sm text-gray-400 mb-3">Individual Scores</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <ScoreItem label="Deep Squat" score={assessment.deep_squat} />
+                <ScoreItem label="Hurdle Step" score={assessment.hurdle_step} />
+                <ScoreItem label="Inline Lunge" score={assessment.inline_lunge} />
+                <ScoreItem label="Shoulder Mobility" score={assessment.shoulder_mobility} />
+                <ScoreItem label="ASLR" score={assessment.active_straight_leg_raise} />
+                <ScoreItem label="Trunk Stability" score={assessment.trunk_stability_pushup} />
+                <ScoreItem label="Rotary Stability" score={assessment.rotary_stability} />
+              </div>
+            </div>
+
+            {/* Assessment Date */}
+            <div className="mt-4 flex items-center gap-2 text-sm text-gray-400">
+              <Calendar className="h-4 w-4" />
+              <span>Assessed on {new Date(assessment.assessment_date).toLocaleDateString()}</span>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Series Selection */}
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Available Series */}
-          <div>
-            <h2 className="text-xl font-bold text-white mb-4">Recommended Training Series</h2>
-            <div className="space-y-3">
-              {availableSeries.map((series, index) => {
-                const isRecommended = index < 2 && ((assessment.weak_areas as any)?.areas || []).length > 0
-                return (
-                  <button
-                    key={series.id}
-                    onClick={() => setSelectedSeries(series.id)}
-                    className={`w-full p-4 rounded-lg border text-left transition-colors ${
-                      selectedSeries === series.id
-                        ? 'bg-fire-gold/20 border-fire-gold/50'
-                        : 'bg-white/5 border-white/10 hover:bg-white/10'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-white">{series.name}</h3>
-                          {isRecommended && (
-                            <Badge className="bg-fire-gold/20 text-fire-gold border-fire-gold/30">
-                              <Star className="h-3 w-3 mr-1" />
-                              Recommended
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-400 mt-1">{series.description}</p>
-                        <div className="flex items-center gap-4 mt-2 text-xs">
-                          <span className="text-gray-500">
-                            <Clock className="inline h-3 w-3 mr-1" />
-                            {series.duration_weeks} weeks
-                          </span>
-                          <span className="text-gray-500">
-                            <Target className="inline h-3 w-3 mr-1" />
-                            {series.target_area}
-                          </span>
-                          <Badge variant="outline" className="text-xs border-white/20">
-                            {series.difficulty_level}
-                          </Badge>
-                        </div>
-                      </div>
-                      {selectedSeries === series.id && (
-                        <CheckCircle className="h-5 w-5 text-fire-gold mt-1" />
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Series Preview */}
-          <div>
-            <h2 className="text-xl font-bold text-white mb-4">Series Preview</h2>
-            {seriesExercises ? (
-              <Card className="bg-white/5 border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-white">{seriesExercises.name}</CardTitle>
-                  <CardDescription className="text-gray-400">
-                    {seriesExercises.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {/* Week 1 */}
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-fire-gold mb-2">
-                      Week 1: Foundation
-                    </h4>
-                    <div className="space-y-2">
-                      {seriesExercises.exercises.week_1.slice(0, 4).map((exercise, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm">
-                          <div className="w-1 h-1 bg-gray-400 rounded-full" />
-                          <span className="text-gray-300">{exercise.name}</span>
-                          <span className="text-gray-500 text-xs">
-                            {exercise.sets && `${exercise.sets} sets`}
-                            {exercise.reps && ` × ${exercise.reps} reps`}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+        {/* Current Series Assignment */}
+        <Card className="bg-white/5 border-white/10">
+          <CardHeader>
+            <CardTitle className="text-white">Current Training Series</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {currentSeries ? (
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">{currentSeries.series.name}</h3>
+                    <p className="text-sm text-gray-400 mt-1">{currentSeries.series.description}</p>
                   </div>
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Active
+                  </Badge>
+                </div>
 
-                  {/* Week 2 */}
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-fire-gold mb-2">
-                      Week 2: Progression
-                    </h4>
-                    <div className="space-y-2">
-                      {seriesExercises.exercises.week_2.slice(0, 4).map((exercise, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm">
-                          <div className="w-1 h-1 bg-gray-400 rounded-full" />
-                          <span className="text-gray-300">{exercise.name}</span>
-                          <span className="text-gray-500 text-xs">
-                            {exercise.sets && `${exercise.sets} sets`}
-                            {exercise.reps && ` × ${exercise.reps} reps`}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <p className="text-xs text-gray-400 mb-1">Current Week</p>
+                    <p className="text-lg font-bold text-white">
+                      Week {currentSeries.assignment.current_week} of {currentSeries.series.duration_weeks || 3}
+                    </p>
                   </div>
-
-                  {/* Week 3 */}
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-fire-gold mb-2">
-                      Week 3: Integration
-                    </h4>
-                    <div className="space-y-2">
-                      {seriesExercises.exercises.week_3.slice(0, 4).map((exercise, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm">
-                          <div className="w-1 h-1 bg-gray-400 rounded-full" />
-                          <span className="text-gray-300">{exercise.name}</span>
-                          <span className="text-gray-500 text-xs">
-                            {exercise.sets && `${exercise.sets} sets`}
-                            {exercise.reps && ` × ${exercise.reps} reps`}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <p className="text-xs text-gray-400 mb-1">Progress</p>
+                    <p className="text-lg font-bold text-fire-gold">
+                      {currentSeries.assignment.completion_percentage || 0}%
+                    </p>
                   </div>
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <p className="text-xs text-gray-400 mb-1">Points Earned</p>
+                    <p className="text-lg font-bold text-fire-gold">
+                      {currentSeries.assignment.points_earned || 0}
+                    </p>
+                  </div>
+                </div>
 
-                  <Button
-                    onClick={handleAssignSeries}
-                    disabled={saving || !selectedSeries}
-                    className="w-full bg-fire-red hover:bg-red-700 text-white"
-                  >
-                    {saving ? (
-                      <>
-                        <Activity className="h-4 w-4 mr-2 animate-spin" />
-                        Assigning Series...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Assign Series to {assessment.user.name}
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
+                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400">
+                  <div className="flex items-center gap-1">
+                    <Target className="h-4 w-4" />
+                    <span>{currentSeries.series.target_area}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    <span>{currentSeries.series.duration_weeks} weeks</span>
+                  </div>
+                  <Badge variant="outline" className="border-white/20">
+                    {currentSeries.series.difficulty_level}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center gap-2 text-sm text-gray-400 pt-2 border-t border-white/10">
+                  <Calendar className="h-4 w-4" />
+                  <span>
+                    Started {new Date(currentSeries.assignment.start_date).toLocaleDateString()} •
+                    Ends {new Date(currentSeries.assignment.end_date).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
             ) : (
-              <Card className="bg-white/5 border-white/10">
-                <CardContent className="p-8 text-center">
-                  <Target className="h-12 w-12 text-gray-600 mx-auto mb-3" />
-                  <p className="text-gray-400">Select a series to preview exercises</p>
-                </CardContent>
-              </Card>
+              <div className="text-center py-8">
+                <AlertCircle className="h-12 w-12 text-gray-600 mx-auto mb-3" />
+                <p className="text-gray-400">No active training series assigned</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  This firefighter has not been assigned a training series yet.
+                </p>
+              </div>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
+    </div>
+  )
+}
+
+function ScoreItem({ label, score }: { label: string; score: number }) {
+  const getScoreColorClass = (score: number) => {
+    if (score >= 3) return 'text-green-400'
+    if (score === 2) return 'text-yellow-400'
+    return 'text-red-400'
+  }
+
+  return (
+    <div className="bg-white/5 rounded-lg p-2 text-center">
+      <p className="text-xs text-gray-400 truncate">{label}</p>
+      <p className={`text-lg font-bold ${getScoreColorClass(score)}`}>{score}</p>
     </div>
   )
 }

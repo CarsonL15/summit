@@ -368,7 +368,7 @@ export default function ChiefDashboard() {
                           <div className="flex items-center gap-2 mt-0.5">
                             <p className="text-xs text-gray-400">Badge #{firefighter.badge_number}</p>
                             {firefighter.last_fms_score && (
-                              <Badge variant="outline" className="text-xs border-white/20">
+                              <Badge variant="outline" className={`text-xs ${getRiskTextColor(firefighter.last_fms_score)} border-current/30`}>
                                 FMS: {firefighter.last_fms_score}
                               </Badge>
                             )}
@@ -426,7 +426,7 @@ export default function ChiefDashboard() {
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-white">
+                          <p className={`text-sm font-medium ${getRiskTextColor(assessment.total_score)}`}>
                             Score: {assessment.total_score}/21
                           </p>
                           <p className="text-xs text-gray-400 mt-1">
