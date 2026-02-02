@@ -169,7 +169,7 @@ function ClinicAddUserPageContent() {
         <div className="container mx-auto px-4 py-3 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-4">
             <Link href="/clinic/team">
-              <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
+              <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-black/30">
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 Back
               </Button>
@@ -235,7 +235,7 @@ function ClinicAddUserPageContent() {
                     onClick={() => setSelectedRole('chief')}
                     className={selectedRole === 'chief'
                       ? 'bg-fire-gold hover:bg-yellow-600 text-black'
-                      : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}
+                      : 'bg-white/10 text-white border-white/20 hover:bg-black/40'}
                   >
                     <Shield className="mr-2 h-4 w-4" />
                     Fire Chief
@@ -246,7 +246,7 @@ function ClinicAddUserPageContent() {
                     onClick={() => setSelectedRole('firefighter')}
                     className={selectedRole === 'firefighter'
                       ? 'bg-fire-red hover:bg-red-700 text-white'
-                      : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}
+                      : 'bg-white/10 text-white border-white/20 hover:bg-black/40'}
                   >
                     <Flame className="mr-2 h-4 w-4" />
                     Firefighter
@@ -370,7 +370,7 @@ function ClinicAddUserPageContent() {
                     type="button"
                     variant="outline"
                     disabled={isCreating}
-                    className="w-full bg-white/10 text-white border-white/20 hover:bg-white/20"
+                    className="w-full bg-white/10 text-white border-white/20 hover:bg-black/40"
                   >
                     Cancel
                   </Button>

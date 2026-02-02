@@ -334,7 +334,7 @@ export default function SeriesCustomizer() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/clinic/series">
-                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white hover:bg-white/10">
+                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white hover:bg-black/30">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
                 </Button>
@@ -426,7 +426,7 @@ export default function SeriesCustomizer() {
                       draggable
                       onDragStart={(e) => handleDragStart(e, exercise)}
                       onDragEnd={handleDragEnd}
-                      className={`p-3 rounded-lg bg-white/5 border border-white/10 cursor-grab active:cursor-grabbing hover:bg-white/10 transition-colors ${
+                      className={`p-3 rounded-lg bg-white/5 border border-white/10 cursor-grab active:cursor-grabbing hover:bg-black/30 transition-colors ${
                         draggedExercise?.id === exercise.id ? 'opacity-50 border-purple-500' : ''
                       }`}
                     >

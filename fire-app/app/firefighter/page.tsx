@@ -41,6 +41,7 @@ export default function FirefighterDashboard() {
   const [user, setUser] = useState<UserData | null>(null)
   const [currentSeries, setCurrentSeries] = useState<SeriesWithAssignment | null>(null)
   const [todaysExercises, setTodaysExercises] = useState<ExerciseWithCompletion[]>([])
+  const [todayDayLabel, setTodayDayLabel] = useState<string>('Day A')
   const [recentAchievements, setRecentAchievements] = useState<UserAchievement[]>([])
   const [leaderboardRank, setLeaderboardRank] = useState<number>(0)
   const [latestFmsScore, setLatestFmsScore] = useState<number | null>(null)
@@ -102,7 +103,14 @@ export default function FirefighterDashboard() {
           assignment: seriesAssignment
         })
 
-        // Get exercises for current week
+        // Determine if today is Day A or Day B
+        // Mon(1), Wed(3), Fri(5), Sun(0) = Day A (day_number 1)
+        // Tue(2), Thu(4), Sat(6) = Day B (day_number 2)
+        const dayOfWeek = new Date().getDay()
+        const todayDayNumber = [0, 1, 3, 5].includes(dayOfWeek) ? 1 : 2 // Day A or Day B
+        setTodayDayLabel(todayDayNumber === 1 ? 'Day A' : 'Day B')
+
+        // Get exercises for current week AND current day (A or B)
         const { data: seriesExercises } = await supabase
           .from('series_exercises')
           .select(`
@@ -111,6 +119,7 @@ export default function FirefighterDashboard() {
           `)
           .eq('series_id', seriesAssignment.series_id)
           .eq('week_number', seriesAssignment.current_week || 1)
+          .eq('day_number', todayDayNumber)
           .order('order_in_week')
 
         if (seriesExercises) {
@@ -129,6 +138,12 @@ export default function FirefighterDashboard() {
 
           const exercisesWithCompletion: ExerciseWithCompletion[] = seriesExercises
             .filter(se => se.exercises)
+            // Filter out warm-up exercises
+            .filter(se => {
+              const exercise = se.exercises as ExerciseData
+              const tags = exercise.tags || []
+              return !tags.includes('warm-up')
+            })
             .map(se => ({
               ...(se.exercises as ExerciseData),
               completed_today: completedIds.includes(se.exercise_id),
@@ -246,7 +261,7 @@ export default function FirefighterDashboard() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-gray-400 hover:text-white p-2"
+                  className="text-gray-400 hover:text-white hover:bg-black/30 p-2"
                 >
                   <User className="h-4 w-4" />
                 </Button>
@@ -255,7 +270,7 @@ export default function FirefighterDashboard() {
                 variant="ghost"
                 size="sm"
                 onClick={handleLogout}
-                className="text-gray-400 hover:text-white p-2"
+                className="text-gray-400 hover:text-white hover:bg-black/30 p-2"
               >
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -322,20 +337,10 @@ export default function FirefighterDashboard() {
                       FMS Score: {latestFmsScore}/21
                     </Badge>
                   </div>
-                  <p className="text-sm sm:text-base text-gray-300 mb-3">
+                  <p className="text-sm sm:text-base text-gray-300">
                     Your FMS score indicates elevated injury risk. Firefighters with scores below 14 are{' '}
                     <span className="font-bold text-red-400">3x more likely</span> to experience work-related injuries.
                   </p>
-                  <div className="bg-black/30 rounded-lg p-3 sm:p-4 border border-red-500/20">
-                    <p className="text-xs sm:text-sm text-gray-400 mb-2">
-                      <strong className="text-white">Critical Action Required:</strong>
-                    </p>
-                    <ul className="text-xs sm:text-sm text-gray-300 space-y-1 ml-4 list-disc">
-                      <li>Complete your assigned corrective exercises daily</li>
-                      <li>Focus on weak movement patterns identified in your assessment</li>
-                      <li>Track your progress to reduce injury risk by up to 85%</li>
-                    </ul>
-                  </div>
                 </div>
               </div>
             </AnimatedCardContent>
@@ -456,7 +461,7 @@ export default function FirefighterDashboard() {
               </CardTitle>
               {currentSeries && (
                 <CardDescription className="text-gray-400">
-                  Week {currentSeries.assignment.current_week} • Day {new Date().getDay() || 7}
+                  Week {currentSeries.assignment.current_week} • {todayDayLabel}
                 </CardDescription>
               )}
             </CardHeader>
@@ -472,8 +477,8 @@ export default function FirefighterDashboard() {
                       <div
                         className={`p-3 rounded-lg border transition-colors cursor-pointer ${
                           exercise.completed_today
-                            ? 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20'
-                            : 'bg-white/5 border-white/10 hover:bg-white/10'
+                            ? 'bg-green-500/10 border-green-500/30 hover:bg-green-600/30'
+                            : 'bg-white/5 border-white/10 hover:bg-black/30'
                         }`}
                       >
                         <div className="flex items-center justify-between">

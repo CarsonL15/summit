@@ -155,8 +155,13 @@ export default function AssessmentReports() {
         // Get weak areas from assessment
         const weakAreas = (assessment.weak_areas as any)?.areas || []
 
-        // Sort by relevance to weak areas
+        // DEMO MODE: Always prioritize Bulletproof Shoulder Program first
         const sortedSeries = seriesData.sort((a, b) => {
+          // Always put Bulletproof Shoulder Program at the top
+          if (a.name === 'Bulletproof Shoulder Program') return -1
+          if (b.name === 'Bulletproof Shoulder Program') return 1
+
+          // Then sort by relevance to weak areas
           const aMatches = weakAreas.some((area: string) =>
             a.target_area?.toLowerCase().includes(area.replace('_', ' ').toLowerCase()) ||
             a.name.toLowerCase().includes(area.replace('_', ' ').toLowerCase())
@@ -295,7 +300,7 @@ export default function AssessmentReports() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-4">
               <Link href="/chief">
-                <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
+                <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-black/30">
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   Back
                 </Button>
@@ -329,7 +334,7 @@ export default function AssessmentReports() {
                   variant={scoreFilter === 'all' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setScoreFilter('all')}
-                  className={scoreFilter === 'all' ? 'bg-fire-gold text-black hover:bg-yellow-600' : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
+                  className={scoreFilter === 'all' ? 'bg-fire-gold text-black hover:bg-yellow-600' : 'bg-black/50 text-white border-white/30 hover:bg-black/40 hover:border-white/40'}
                 >
                   All Scores
                 </Button>
@@ -337,7 +342,7 @@ export default function AssessmentReports() {
                   variant={scoreFilter === 'high' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setScoreFilter('high')}
-                  className={scoreFilter === 'high' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
+                  className={scoreFilter === 'high' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-black/50 text-white border-white/30 hover:bg-black/40 hover:border-white/40'}
                 >
                   High Risk (&lt;15)
                 </Button>
@@ -345,7 +350,7 @@ export default function AssessmentReports() {
                   variant={scoreFilter === 'moderate' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setScoreFilter('moderate')}
-                  className={scoreFilter === 'moderate' ? 'bg-yellow-600 text-white hover:bg-yellow-700' : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
+                  className={scoreFilter === 'moderate' ? 'bg-yellow-600 text-white hover:bg-yellow-700' : 'bg-black/50 text-white border-white/30 hover:bg-black/40 hover:border-white/40'}
                 >
                   Moderate (15-17)
                 </Button>
@@ -353,7 +358,7 @@ export default function AssessmentReports() {
                   variant={scoreFilter === 'low' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setScoreFilter('low')}
-                  className={scoreFilter === 'low' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
+                  className={scoreFilter === 'low' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-black/50 text-white border-white/30 hover:bg-black/40 hover:border-white/40'}
                 >
                   Low Risk (18+)
                 </Button>
@@ -519,7 +524,7 @@ export default function AssessmentReports() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="mt-4 bg-black/50 text-white border-white/30 hover:bg-white/20"
+                                className="mt-4 bg-black/50 text-white border-white/30 hover:bg-black/40"
                               >
                                 View Full Details
                               </Button>
@@ -545,7 +550,7 @@ export default function AssessmentReports() {
                                   return (
                                     <div
                                       key={series.id}
-                                      className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors"
+                                      className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10 hover:bg-black/30 transition-colors"
                                     >
                                       <div className="flex-1">
                                         <div className="flex items-center gap-2">

@@ -24,11 +24,7 @@ interface AssessmentWithUser extends FMSScoreData {
 }
 
 interface SeriesWithExercises extends SeriesData {
-  exercises: {
-    week_1: ExerciseData[]
-    week_2: ExerciseData[]
-    week_3: ExerciseData[]
-  }
+  exercises: Record<number, ExerciseData[]>  // Dynamic weeks: { 1: [...], 2: [...], etc }
 }
 
 export default function ClinicSeriesAssignmentReview() {
@@ -105,9 +101,13 @@ export default function ClinicSeriesAssignmentReview() {
         .order('name')
 
       if (seriesData) {
-        // Suggest series based on weak areas
+        // DEMO MODE: Always prioritize Bulletproof Shoulder Program first
         const suggestedSeries = seriesData.sort((a, b) => {
-          // Prioritize series that match weak areas
+          // Always put Bulletproof Shoulder Program at the top
+          if (a.name === 'Bulletproof Shoulder Program') return -1
+          if (b.name === 'Bulletproof Shoulder Program') return 1
+
+          // Then prioritize series that match weak areas
           const aMatches = weakAreas.some((area: string) =>
             a.target_area?.toLowerCase().includes(area.replace('_', ' ').toLowerCase()) ||
             a.name.toLowerCase().includes(area.replace('_', ' ').toLowerCase())
@@ -124,7 +124,7 @@ export default function ClinicSeriesAssignmentReview() {
 
         setAvailableSeries(suggestedSeries)
 
-        // Auto-select first suggested series
+        // Auto-select first suggested series (will be Bulletproof Shoulder Program)
         if (suggestedSeries.length > 0) {
           setSelectedSeries(suggestedSeries[0].id)
         }
@@ -167,18 +167,13 @@ export default function ClinicSeriesAssignmentReview() {
         console.error('Error fetching series exercises:', exercisesError)
       }
 
-      // Even if no exercises found, still show the series preview
-      const exercises = {
-        week_1: (seriesExercisesData || [])
-          .filter(se => se.week_number === 1)
-          .map(se => se.exercise as ExerciseData)
-          .filter(Boolean),
-        week_2: (seriesExercisesData || [])
-          .filter(se => se.week_number === 2)
-          .map(se => se.exercise as ExerciseData)
-          .filter(Boolean),
-        week_3: (seriesExercisesData || [])
-          .filter(se => se.week_number === 3)
+      // Build exercises dynamically for all weeks
+      const exercises: Record<number, ExerciseData[]> = {}
+      const totalWeeks = seriesData.duration_weeks || 3
+
+      for (let week = 1; week <= totalWeeks; week++) {
+        exercises[week] = (seriesExercisesData || [])
+          .filter(se => se.week_number === week)
           .map(se => se.exercise as ExerciseData)
           .filter(Boolean)
       }
@@ -362,7 +357,7 @@ export default function ClinicSeriesAssignmentReview() {
                     className={`w-full p-4 rounded-lg border text-left transition-colors ${
                       selectedSeries === series.id
                         ? 'bg-blue-500/20 border-blue-500/50'
-                        : 'bg-white/5 border-white/10 hover:bg-white/10'
+                        : 'bg-white/5 border-white/10 hover:bg-black/30'
                     }`}
                   >
                     <div className="flex items-start justify-between">
@@ -436,7 +431,7 @@ export default function ClinicSeriesAssignmentReview() {
                             : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
                         }`}
                       >
-                        {seriesExercises.series_type === 'rehab' ? 'Rehab (7 days/week)' : 'S&C (3x/week)'}
+                        {seriesExercises.series_type === 'rehab' ? `Rehab (${seriesExercises.days_per_week || 7} days/week)` : `S&C (${seriesExercises.days_per_week || 3}x/week)`}
                       </Badge>
                     )}
                   </div>
@@ -445,103 +440,59 @@ export default function ClinicSeriesAssignmentReview() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {/* Week 1 */}
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-blue-400 mb-2">
-                      Week 1: Foundation
-                    </h4>
-                    <div className="space-y-2">
-                      {seriesExercises.exercises.week_1.slice(0, 4).map((exercise, idx) => (
-                        <div key={idx} className="flex items-start gap-2 text-sm">
-                          <div className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0" />
-                          <div className="flex-1">
-                            <span className="text-gray-300">{exercise.name}</span>
-                            {exercise.tags && exercise.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {exercise.tags.slice(0, 3).map((tag, tagIdx) => (
-                                  <Badge
-                                    key={tagIdx}
-                                    variant="outline"
-                                    className="text-xs bg-white/5 text-gray-400 border-white/10"
-                                  >
-                                    {tag}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
+                  {/* Dynamic Weeks Display */}
+                  <div className="max-h-96 overflow-y-auto pr-2">
+                    {Object.entries(seriesExercises.exercises)
+                      .sort(([a], [b]) => Number(a) - Number(b))
+                      .map(([weekNum, exercises]) => {
+                        const weekNumber = Number(weekNum)
+                        const weekLabels: Record<number, string> = {
+                          1: 'Foundation',
+                          2: 'Progression',
+                          3: 'Integration',
+                          4: 'Strength',
+                          5: 'Power',
+                          6: 'Endurance',
+                          7: 'Peak',
+                          8: 'Mastery'
+                        }
+                        return (
+                          <div key={weekNum} className="mb-4">
+                            <h4 className="text-sm font-semibold text-blue-400 mb-2">
+                              Week {weekNumber}: {weekLabels[weekNumber] || `Phase ${weekNumber}`}
+                            </h4>
+                            <div className="space-y-2">
+                              {exercises.slice(0, 4).map((exercise, idx) => (
+                                <div key={idx} className="flex items-start gap-2 text-sm">
+                                  <div className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <span className="text-gray-300">{exercise.name}</span>
+                                    {exercise.tags && exercise.tags.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-1">
+                                        {exercise.tags.slice(0, 3).map((tag, tagIdx) => (
+                                          <Badge
+                                            key={tagIdx}
+                                            variant="outline"
+                                            className="text-xs bg-white/5 text-gray-400 border-white/10"
+                                          >
+                                            {tag}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                              {exercises.length === 0 && (
+                                <p className="text-gray-500 text-sm">No exercises configured</p>
+                              )}
+                              {exercises.length > 4 && (
+                                <p className="text-gray-500 text-xs">+{exercises.length - 4} more exercises</p>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                      {seriesExercises.exercises.week_1.length === 0 && (
-                        <p className="text-gray-500 text-sm">No exercises configured</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Week 2 */}
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-blue-400 mb-2">
-                      Week 2: Progression
-                    </h4>
-                    <div className="space-y-2">
-                      {seriesExercises.exercises.week_2.slice(0, 4).map((exercise, idx) => (
-                        <div key={idx} className="flex items-start gap-2 text-sm">
-                          <div className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0" />
-                          <div className="flex-1">
-                            <span className="text-gray-300">{exercise.name}</span>
-                            {exercise.tags && exercise.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {exercise.tags.slice(0, 3).map((tag, tagIdx) => (
-                                  <Badge
-                                    key={tagIdx}
-                                    variant="outline"
-                                    className="text-xs bg-white/5 text-gray-400 border-white/10"
-                                  >
-                                    {tag}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      {seriesExercises.exercises.week_2.length === 0 && (
-                        <p className="text-gray-500 text-sm">No exercises configured</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Week 3 */}
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-blue-400 mb-2">
-                      Week 3: Integration
-                    </h4>
-                    <div className="space-y-2">
-                      {seriesExercises.exercises.week_3.slice(0, 4).map((exercise, idx) => (
-                        <div key={idx} className="flex items-start gap-2 text-sm">
-                          <div className="w-1 h-1 bg-gray-400 rounded-full mt-2 flex-shrink-0" />
-                          <div className="flex-1">
-                            <span className="text-gray-300">{exercise.name}</span>
-                            {exercise.tags && exercise.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {exercise.tags.slice(0, 3).map((tag, tagIdx) => (
-                                  <Badge
-                                    key={tagIdx}
-                                    variant="outline"
-                                    className="text-xs bg-white/5 text-gray-400 border-white/10"
-                                  >
-                                    {tag}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      {seriesExercises.exercises.week_3.length === 0 && (
-                        <p className="text-gray-500 text-sm">No exercises configured</p>
-                      )}
-                    </div>
+                        )
+                      })}
                   </div>
 
                   <Button

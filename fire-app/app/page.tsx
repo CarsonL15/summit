@@ -19,7 +19,7 @@ export default function FireLandingPage() {
               <h1 className="text-xl sm:text-2xl font-bold text-white">FireFMS</h1>
             </div>
             <Link href="/auth/login">
-              <Button variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20 text-sm sm:text-base">
+              <Button variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-black/40 text-sm sm:text-base">
                 Demo Login
               </Button>
             </Link>
@@ -54,7 +54,7 @@ export default function FireLandingPage() {
                 </Button>
               </Link>
               <Link href="/auth/login">
-                <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20 w-full sm:w-auto">
+                <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-black/40 w-full sm:w-auto">
                   Sign In
                 </Button>
               </Link>
@@ -160,7 +160,7 @@ export default function FireLandingPage() {
                 </Button>
               </Link>
               <Link href="/auth/login">
-                <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-white/20 w-full sm:w-auto">
+                <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-black/40 w-full sm:w-auto">
                   Sign In
                 </Button>
               </Link>

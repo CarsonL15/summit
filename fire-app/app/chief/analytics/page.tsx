@@ -89,11 +89,11 @@ function AnalyticsContent() {
 
       setUser(userData)
 
-      // Get all stations (for now just the user's station, but ready for multi-station)
+      // Get ALL stations for department-wide view
       const { data: stationsData } = await supabase
         .from('stations')
         .select('*')
-        .eq('id', userData.station_id)
+        .order('name')
 
       if (!stationsData) return
 
@@ -301,13 +301,13 @@ function AnalyticsContent() {
         <div className="container mx-auto px-4 py-3 sm:py-4">
           <div className="flex items-center gap-4">
             {selectedStation ? (
-              <Button variant="ghost" size="sm" onClick={handleBackClick} className="text-gray-400 hover:text-white">
+              <Button variant="ghost" size="sm" onClick={handleBackClick} className="text-gray-400 hover:text-white hover:bg-black/30">
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 Back
               </Button>
             ) : (
               <Link href="/chief">
-                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white hover:bg-black/30">
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   Dashboard
                 </Button>
@@ -367,37 +367,42 @@ function AnalyticsContent() {
 
             {/* Station Cards */}
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {stations.map((station, idx) => (
+              {[...stations].sort((a, b) => {
+                // Extract numbers from station names for proper numeric sorting
+                const numA = parseInt(a.name.match(/\d+/)?.[0] || '0')
+                const numB = parseInt(b.name.match(/\d+/)?.[0] || '0')
+                return numA - numB
+              }).map((station, idx) => (
                 <AnimatedCard
                   key={station.id}
                   className="bg-white/5 border-white/10 hover:border-white/20 cursor-pointer transition-all"
                   delay={idx * 0.05}
                   onClick={() => handleStationClick(station.id)}
                 >
-                  <AnimatedCardContent className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-fire-red/20 rounded-lg">
-                          <Flame className="h-5 w-5 text-fire-red" />
+                  <AnimatedCardContent className="p-6">
+                    <div className="flex items-start justify-between mb-5">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-fire-red/20 rounded-lg">
+                          <Flame className="h-6 w-6 text-fire-red" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-white">{station.name}</h3>
+                          <h3 className="text-lg font-semibold text-white">{station.name}</h3>
                           <p className="text-sm text-gray-400">{station.personnelCount} personnel</p>
                         </div>
                       </div>
                       <ChevronRight className="h-5 w-5 text-gray-500" />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className={`rounded-lg p-3 ${station.highRiskCount > 0 ? 'bg-red-500/10' : 'bg-green-500/10'}`}>
-                        <p className={`text-xl font-bold ${station.highRiskCount > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className={`rounded-lg p-4 ${station.highRiskCount > 0 ? 'bg-red-500/10' : 'bg-green-500/10'}`}>
+                        <p className={`text-2xl font-bold ${station.highRiskCount > 0 ? 'text-red-400' : 'text-green-400'}`}>
                           {station.highRiskCount}
                         </p>
-                        <p className="text-xs text-gray-400">High Risk</p>
+                        <p className="text-sm text-gray-400">High Risk</p>
                       </div>
-                      <div className="bg-blue-500/10 rounded-lg p-3">
-                        <p className="text-xl font-bold text-blue-400">{station.avgFmsScore}</p>
-                        <p className="text-xs text-gray-400">Avg FMS</p>
+                      <div className="bg-blue-500/10 rounded-lg p-4">
+                        <p className="text-2xl font-bold text-blue-400">{station.avgFmsScore}</p>
+                        <p className="text-sm text-gray-400">Avg FMS</p>
                       </div>
                     </div>
                   </AnimatedCardContent>
@@ -642,7 +647,7 @@ function AnalyticsContent() {
                 return (
                   <Card
                     key={ff.id}
-                    className="bg-white/5 border-white/10 hover:bg-white/[0.07] transition-colors cursor-pointer"
+                    className="bg-white/5 border-white/10 hover:bg-black/30 transition-colors cursor-pointer"
                     onClick={handleCardClick}
                   >
                     <CardContent className="p-4">

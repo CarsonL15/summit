@@ -13,7 +13,7 @@ import { ProgressBar } from '@/components/ui/progress-bar'
 import {
   Flame, Users, Trophy, Activity, TrendingUp, Award,
   FileText, Plus, LogOut, Shield, ChevronRight, Clock,
-  Target, Zap, Star, AlertTriangle, User
+  Target, Zap, Star, AlertTriangle, User, Building2, ChevronDown
 } from 'lucide-react'
 import { Database } from '@/types/database'
 import { getRiskLevel, getRiskTextColor } from '@/lib/utils/fms'
@@ -26,6 +26,7 @@ type SeriesAssignmentData = Database['public']['Tables']['series_assignments']['
 interface FirefighterWithStats extends UserData {
   last_fms_score?: number
   active_series?: boolean
+  station_name?: string
 }
 
 interface StationStats {
@@ -33,19 +34,24 @@ interface StationStats {
   high_risk_count: number
   avg_fms_score: number
   avg_completion_rate: number
+  total_stations: number
 }
 
 export default function ChiefDashboard() {
   const [user, setUser] = useState<UserData | null>(null)
-  const [station, setStation] = useState<StationData | null>(null)
+  const [stations, setStations] = useState<StationData[]>([])
+  const [selectedStation, setSelectedStation] = useState<string>('all')
+  const [showStationDropdown, setShowStationDropdown] = useState(false)
   const [stats, setStats] = useState<StationStats>({
     total_firefighters: 0,
     high_risk_count: 0,
     avg_fms_score: 0,
-    avg_completion_rate: 0
+    avg_completion_rate: 0,
+    total_stations: 0
   })
   const [leaderboard, setLeaderboard] = useState<FirefighterWithStats[]>([])
   const [recentAssessments, setRecentAssessments] = useState<FMSScoreData[]>([])
+  const [allFirefighters, setAllFirefighters] = useState<FirefighterWithStats[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const supabase = createClient()
@@ -53,6 +59,12 @@ export default function ChiefDashboard() {
   useEffect(() => {
     loadDashboardData()
   }, [])
+
+  useEffect(() => {
+    if (allFirefighters.length > 0) {
+      filterDataByStation()
+    }
+  }, [selectedStation, allFirefighters])
 
   const loadDashboardData = async () => {
     try {
@@ -76,7 +88,7 @@ export default function ChiefDashboard() {
         return
       }
 
-      // Check role - redirect if not a chief
+      // Check role - redirect if not a chief or admin
       if (userData.role !== 'chief' && userData.role !== 'admin') {
         router.push('/firefighter')
         return
@@ -84,114 +96,72 @@ export default function ChiefDashboard() {
 
       setUser(userData)
 
-      // Get station info
-      if (userData.station_id) {
-        const { data: stationData } = await supabase
-          .from('stations')
-          .select('*')
-          .eq('id', userData.station_id)
-          .single()
+      // Get ALL stations (department-wide view)
+      const { data: stationsData } = await supabase
+        .from('stations')
+        .select('*')
+        .order('name')
 
-        if (stationData) {
-          setStation(stationData)
-        }
+      if (stationsData) {
+        setStations(stationsData)
+      }
 
-        // Get all firefighters in station
-        const { data: firefighters } = await supabase
-          .from('users')
-          .select('*')
-          .eq('station_id', userData.station_id)
-          .eq('role', 'firefighter')
-          .order('points', { ascending: false })
+      // Get ALL firefighters across all stations
+      const { data: firefighters } = await supabase
+        .from('users')
+        .select('*')
+        .eq('role', 'firefighter')
+        .order('points', { ascending: false })
 
-        if (firefighters) {
-          const today = new Date().toISOString().split('T')[0]
+      if (firefighters && stationsData) {
+        const today = new Date().toISOString().split('T')[0]
 
-          // Get average completion rate
-          const { data: assignments } = await supabase
-            .from('series_assignments')
-            .select('completion_percentage')
-            .in('user_id', firefighters.map(f => f.id))
-            .eq('completed', false)
-
-          const avgCompletion = assignments && assignments.length > 0
-            ? assignments.reduce((sum, a) => sum + (a.completion_percentage || 0), 0) / assignments.length
-            : 0
-
-          // Get latest FMS scores for high-risk count and avg FMS
-          const { data: latestFMS } = await supabase
-            .from('fms_scores')
-            .select('user_id, total_score')
-            .in('user_id', firefighters.map(f => f.id))
-            .order('assessed_date', { ascending: false })
-
-          // Get unique users and their latest scores
-          const latestScoreMap = new Map<string, number>()
-          latestFMS?.forEach(score => {
-            if (!latestScoreMap.has(score.user_id)) {
-              latestScoreMap.set(score.user_id, score.total_score)
-            }
-          })
-
-          const allScores = Array.from(latestScoreMap.values())
-          const highRiskCount = allScores.filter(score => getRiskLevel(score) === 'high').length
-          const avgFmsScore = allScores.length > 0
-            ? Math.round((allScores.reduce((sum, s) => sum + s, 0) / allScores.length) * 10) / 10
-            : 0
-
-          setStats({
-            total_firefighters: firefighters.length,
-            high_risk_count: highRiskCount,
-            avg_fms_score: avgFmsScore,
-            avg_completion_rate: Math.round(avgCompletion)
-          })
-
-          // Get top 10 for leaderboard with additional info
-          const top10 = firefighters.slice(0, 10)
-
-          // Get FMS scores and active series for top 10
-          const { data: fmsScores } = await supabase
-            .from('fms_scores')
-            .select('user_id, total_score')
-            .in('user_id', top10.map(f => f.id))
-            .order('created_at', { ascending: false })
-
-          const { data: activeSeries2 } = await supabase
-            .from('series_assignments')
-            .select('user_id')
-            .in('user_id', top10.map(f => f.id))
-            .eq('completed', false)
-            .gte('end_date', today)
-
-          const fmsMap = new Map()
-          fmsScores?.forEach(score => {
-            if (!fmsMap.has(score.user_id)) {
-              fmsMap.set(score.user_id, score.total_score)
-            }
-          })
-
-          const activeSeriesUsers = new Set(activeSeries2?.map(a => a.user_id))
-
-          const leaderboardWithStats = top10.map(f => ({
-            ...f,
-            last_fms_score: fmsMap.get(f.id),
-            active_series: activeSeriesUsers.has(f.id)
-          }))
-
-          setLeaderboard(leaderboardWithStats)
-        }
-
-        // Get recent FMS assessments
-        const { data: recentFMS } = await supabase
+        // Get latest FMS scores for all firefighters
+        const { data: latestFMS } = await supabase
           .from('fms_scores')
-          .select('*')
-          .eq('assessed_by', authUser.id)
-          .order('created_at', { ascending: false })
-          .limit(5)
+          .select('user_id, total_score')
+          .in('user_id', firefighters.map(f => f.id))
+          .order('assessed_date', { ascending: false })
 
-        if (recentFMS) {
-          setRecentAssessments(recentFMS)
-        }
+        // Get active series for all firefighters
+        const { data: activeSeries } = await supabase
+          .from('series_assignments')
+          .select('user_id')
+          .in('user_id', firefighters.map(f => f.id))
+          .eq('completed', false)
+          .gte('end_date', today)
+
+        // Build maps
+        const fmsMap = new Map<string, number>()
+        latestFMS?.forEach(score => {
+          if (!fmsMap.has(score.user_id)) {
+            fmsMap.set(score.user_id, score.total_score)
+          }
+        })
+
+        const activeSeriesUsers = new Set(activeSeries?.map(a => a.user_id))
+        const stationMap = new Map(stationsData.map(s => [s.id, s.name]))
+
+        // Enrich firefighters with stats
+        const enrichedFirefighters = firefighters.map(f => ({
+          ...f,
+          last_fms_score: fmsMap.get(f.id),
+          active_series: activeSeriesUsers.has(f.id),
+          station_name: f.station_id ? stationMap.get(f.station_id) : undefined
+        }))
+
+        setAllFirefighters(enrichedFirefighters)
+      }
+
+      // Get recent FMS assessments (all assessments for department chief)
+      const { data: recentFMS } = await supabase
+        .from('fms_scores')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      if (recentFMS) {
+        setRecentAssessments(recentFMS)
       }
 
     } catch (error) {
@@ -201,9 +171,55 @@ export default function ChiefDashboard() {
     }
   }
 
+  const filterDataByStation = async () => {
+    let filtered = allFirefighters
+
+    if (selectedStation !== 'all') {
+      filtered = allFirefighters.filter(f => f.station_id === selectedStation)
+    }
+
+    // Calculate stats for filtered data
+    const allScores = filtered
+      .filter(f => f.last_fms_score !== undefined)
+      .map(f => f.last_fms_score!)
+
+    const highRiskCount = allScores.filter(score => getRiskLevel(score) === 'high').length
+    const avgFmsScore = allScores.length > 0
+      ? Math.round((allScores.reduce((sum, s) => sum + s, 0) / allScores.length) * 10) / 10
+      : 0
+
+    // Get completion rates for filtered users
+    const { data: assignments } = await supabase
+      .from('series_assignments')
+      .select('completion_percentage')
+      .in('user_id', filtered.map(f => f.id))
+      .eq('completed', false)
+
+    const avgCompletion = assignments && assignments.length > 0
+      ? assignments.reduce((sum, a) => sum + (a.completion_percentage || 0), 0) / assignments.length
+      : 0
+
+    setStats({
+      total_firefighters: filtered.length,
+      high_risk_count: highRiskCount,
+      avg_fms_score: avgFmsScore,
+      avg_completion_rate: Math.round(avgCompletion),
+      total_stations: stations.length
+    })
+
+    // Set leaderboard (top 10)
+    setLeaderboard(filtered.slice(0, 10))
+  }
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/auth/login')
+  }
+
+  const getSelectedStationName = () => {
+    if (selectedStation === 'all') return 'All Stations'
+    const station = stations.find(s => s.id === selectedStation)
+    return station?.name || 'Select Station'
   }
 
   if (loading) {
@@ -221,10 +237,10 @@ export default function ChiefDashboard() {
     )
   }
 
-  if (!user || !station) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
-        <div className="text-white">Access denied or station not found</div>
+        <div className="text-white">Access denied</div>
       </div>
     )
   }
@@ -238,20 +254,20 @@ export default function ChiefDashboard() {
             <div className="flex items-center gap-2 sm:gap-4">
               <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-fire-gold" />
               <div>
-                <h1 className="text-base sm:text-xl font-bold text-white">Command Center</h1>
-                <p className="text-xs sm:text-sm text-gray-400">{station.name}</p>
+                <h1 className="text-base sm:text-xl font-bold text-white">Department Command Center</h1>
+                <p className="text-xs sm:text-sm text-gray-400">Spokane Valley Fire Department</p>
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-white">{user.name}</p>
-                <p className="text-xs text-gray-400">Badge #{user.badge_number}</p>
+                <p className="text-xs text-gray-400">Department Chief</p>
               </div>
               <Link href="/profile">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-gray-400 hover:text-white p-2"
+                  className="text-gray-400 hover:text-white hover:bg-black/30 p-2"
                 >
                   <User className="h-4 w-4" />
                 </Button>
@@ -260,7 +276,7 @@ export default function ChiefDashboard() {
                 variant="ghost"
                 size="sm"
                 onClick={handleLogout}
-                className="text-gray-400 hover:text-white p-2"
+                className="text-gray-400 hover:text-white hover:bg-black/30 p-2"
               >
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -271,6 +287,50 @@ export default function ChiefDashboard() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 sm:py-8">
+        {/* Station Selector */}
+        <div className="mb-6">
+          <div className="relative inline-block">
+            <button
+              onClick={() => setShowStationDropdown(!showStationDropdown)}
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white hover:bg-black/40 transition-colors"
+            >
+              <Building2 className="h-4 w-4 text-fire-gold" />
+              <span>{getSelectedStationName()}</span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${showStationDropdown ? 'rotate-180' : ''}`} />
+            </button>
+            {showStationDropdown && (
+              <div className="absolute top-full left-0 mt-2 w-56 bg-slate-800 border border-white/20 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto">
+                <button
+                  onClick={() => {
+                    setSelectedStation('all')
+                    setShowStationDropdown(false)
+                  }}
+                  className={`w-full text-left px-4 py-2 hover:bg-black/30 transition-colors ${
+                    selectedStation === 'all' ? 'text-fire-gold bg-white/5' : 'text-white'
+                  }`}
+                >
+                  All Stations ({stats.total_stations})
+                </button>
+                <div className="border-t border-white/10" />
+                {stations.map(station => (
+                  <button
+                    key={station.id}
+                    onClick={() => {
+                      setSelectedStation(station.id)
+                      setShowStationDropdown(false)
+                    }}
+                    className={`w-full text-left px-4 py-2 hover:bg-black/30 transition-colors ${
+                      selectedStation === station.id ? 'text-fire-gold bg-white/5' : 'text-white'
+                    }`}
+                  >
+                    {station.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <Link href="/chief/analytics">
@@ -293,52 +353,59 @@ export default function ChiefDashboard() {
           </Link>
         </div>
 
-        {/* Key Stats - 3 most important metrics */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <AnimatedCard className="bg-red-500/10 border-red-500/30" delay={0}>
-            <AnimatedCardContent className="p-4 sm:p-6">
+        {/* Key Stats */}
+        <div className="grid grid-cols-4 gap-3 sm:gap-4 mb-8">
+          <AnimatedCard className="bg-purple-500/10 border-purple-500/30" delay={0}>
+            <AnimatedCardContent className="p-3 sm:p-6">
               <div className="flex items-center justify-between mb-2">
-                <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-400" />
-                <span className="text-2xl sm:text-3xl font-bold text-white">{stats.high_risk_count}</span>
+                <Users className="h-4 w-4 sm:h-6 sm:w-6 text-purple-400" />
+                <span className="text-xl sm:text-3xl font-bold text-white">{stats.total_firefighters}</span>
               </div>
-              <p className="text-sm sm:text-base text-gray-300">High Risk</p>
-              <p className="text-xs text-red-400">FMS &lt;15</p>
+              <p className="text-xs sm:text-base text-gray-300">Personnel</p>
             </AnimatedCardContent>
           </AnimatedCard>
 
-          <AnimatedCard className="bg-blue-500/10 border-blue-500/30" delay={0.05}>
-            <AnimatedCardContent className="p-4 sm:p-6">
+          <AnimatedCard className="bg-red-500/10 border-red-500/30" delay={0.05}>
+            <AnimatedCardContent className="p-3 sm:p-6">
               <div className="flex items-center justify-between mb-2">
-                <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-blue-400" />
-                <span className="text-2xl sm:text-3xl font-bold text-white">{stats.avg_fms_score}</span>
+                <AlertTriangle className="h-4 w-4 sm:h-6 sm:w-6 text-red-400" />
+                <span className="text-xl sm:text-3xl font-bold text-white">{stats.high_risk_count}</span>
               </div>
-              <p className="text-sm sm:text-base text-gray-300">Avg FMS</p>
-              <p className="text-xs text-blue-400">out of 21</p>
+              <p className="text-xs sm:text-base text-gray-300">High Risk</p>
             </AnimatedCardContent>
           </AnimatedCard>
 
-          <AnimatedCard className="bg-green-500/10 border-green-500/30" delay={0.1}>
-            <AnimatedCardContent className="p-4 sm:p-6">
+          <AnimatedCard className="bg-blue-500/10 border-blue-500/30" delay={0.1}>
+            <AnimatedCardContent className="p-3 sm:p-6">
               <div className="flex items-center justify-between mb-2">
-                <Target className="h-5 w-5 sm:h-6 sm:w-6 text-green-400" />
-                <span className="text-2xl sm:text-3xl font-bold text-white">{stats.avg_completion_rate}%</span>
+                <Activity className="h-4 w-4 sm:h-6 sm:w-6 text-blue-400" />
+                <span className="text-xl sm:text-3xl font-bold text-white">{stats.avg_fms_score}</span>
               </div>
-              <p className="text-sm sm:text-base text-gray-300">Compliance</p>
-              <p className="text-xs text-green-400">Program completion</p>
+              <p className="text-xs sm:text-base text-gray-300">Avg FMS</p>
+            </AnimatedCardContent>
+          </AnimatedCard>
+
+          <AnimatedCard className="bg-green-500/10 border-green-500/30" delay={0.15}>
+            <AnimatedCardContent className="p-3 sm:p-6">
+              <div className="flex items-center justify-between mb-2">
+                <Target className="h-4 w-4 sm:h-6 sm:w-6 text-green-400" />
+                <span className="text-xl sm:text-3xl font-bold text-white">{stats.avg_completion_rate}%</span>
+              </div>
+              <p className="text-xs sm:text-base text-gray-300">Compliance</p>
             </AnimatedCardContent>
           </AnimatedCard>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Station Leaderboard */}
+          {/* Leaderboard */}
           <Card className="bg-white/5 border-white/10">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-fire-gold" />
-                Station Leaderboard
+                {selectedStation === 'all' ? 'Department' : getSelectedStationName()} Leaderboard
               </CardTitle>
               <CardDescription className="text-gray-400">
-                Top performers in {station.name}
+                Top performers {selectedStation === 'all' ? 'across all stations' : ''}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -365,8 +432,12 @@ export default function ChiefDashboard() {
                         </div>
                         <div>
                           <p className="text-sm font-medium text-white">{firefighter.name}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <p className="text-xs text-gray-400">Badge #{firefighter.badge_number}</p>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            {selectedStation === 'all' && firefighter.station_name && (
+                              <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
+                                {firefighter.station_name}
+                              </Badge>
+                            )}
                             {firefighter.last_fms_score && (
                               <Badge variant="outline" className={`text-xs ${getRiskTextColor(firefighter.last_fms_score)} border-current/30`}>
                                 FMS: {firefighter.last_fms_score}
@@ -395,9 +466,9 @@ export default function ChiefDashboard() {
               )}
 
               {leaderboard.length > 0 && (
-                <Link href="/chief/leaderboard">
-                  <Button variant="ghost" className="w-full mt-4 text-white/80 hover:text-white hover:bg-white/10">
-                    View Full Leaderboard
+                <Link href="/chief/analytics">
+                  <Button variant="ghost" className="w-full mt-4 text-white/80 hover:text-white hover:bg-black/30">
+                    View Full Analytics
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
@@ -413,7 +484,7 @@ export default function ChiefDashboard() {
                 Recent FMS Assessments
               </CardTitle>
               <CardDescription className="text-gray-400">
-                Latest movement screenings
+                Latest movement screenings across department
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -448,7 +519,7 @@ export default function ChiefDashboard() {
                 <div className="text-center py-8">
                   <FileText className="h-12 w-12 text-gray-600 mx-auto mb-3" />
                   <p className="text-gray-400 mb-4">No assessments yet</p>
-                  <p className="text-xs text-gray-500">Contact your PT to schedule assessments</p>
+                  <p className="text-xs text-gray-500">Contact clinic to schedule assessments</p>
                 </div>
               )}
             </CardContent>
@@ -461,21 +532,21 @@ export default function ChiefDashboard() {
             <div className="text-center">
               <Flame className="h-12 w-12 text-fire-gold mx-auto mb-4" />
               <h3 className="text-2xl font-bold text-white mb-3">
-                Keep Your Team Ready
+                Keep Your Department Ready
               </h3>
               <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
                 Regular FMS assessments and targeted training programs help prevent injuries
-                and maintain peak performance for your firefighters.
+                and maintain peak performance across all {stations.length} stations.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/chief/series">
+                <Link href="/chief/analytics">
                   <Button size="lg" className="bg-fire-gold text-black hover:bg-yellow-500">
-                    Manage Training Programs
+                    View Department Analytics
                   </Button>
                 </Link>
-                <Link href="/chief/analytics">
-                  <Button size="lg" className="bg-white/10 text-white border border-white/20 hover:bg-white/20">
-                    View Analytics
+                <Link href="/chief/injuries">
+                  <Button size="lg" className="bg-white/10 text-white border border-white/20 hover:bg-black/40">
+                    Injury Prevention
                   </Button>
                 </Link>
               </div>

@@ -151,7 +151,7 @@ export default function ChiefAssessmentReview() {
               variant="ghost"
               size="sm"
               onClick={handleBackToAnalytics}
-              className="text-gray-400 hover:text-white hover:bg-white/10"
+              className="text-gray-400 hover:text-white hover:bg-black/30"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Analytics

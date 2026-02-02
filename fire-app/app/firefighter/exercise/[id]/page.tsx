@@ -384,7 +384,7 @@ export default function ExerciseDetailPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-white/80 hover:text-white hover:bg-white/10 p-2 sm:px-3"
+                className="text-white/80 hover:text-white hover:bg-black/30 p-2 sm:px-3"
               >
                 <ChevronLeft className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Back</span>
@@ -490,15 +490,27 @@ export default function ExerciseDetailPage() {
           </Card>
         )}
 
-        {/* Video Placeholder */}
+        {/* Video Section */}
         <Card className="bg-white/5 border-white/10 mb-6">
-          <CardContent className="p-8">
-            <div className="aspect-video bg-black/50 rounded-lg flex items-center justify-center">
-              <div className="text-center">
-                <Video className="h-12 w-12 text-gray-600 mx-auto mb-3" />
-                <p className="text-gray-500">Video demonstration coming soon</p>
+          <CardContent className="p-4">
+            {exercise.video_url ? (
+              <div className="aspect-video rounded-lg overflow-hidden">
+                <iframe
+                  src={`${exercise.video_url.replace('youtu.be/', 'www.youtube-nocookie.com/embed/').replace('youtube.com/watch?v=', 'youtube-nocookie.com/embed/')}?rel=0&modestbranding=1&showinfo=0&iv_load_policy=3`}
+                  title={`${exercise.name} demonstration`}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
               </div>
-            </div>
+            ) : (
+              <div className="aspect-video bg-black/50 rounded-lg flex items-center justify-center">
+                <div className="text-center">
+                  <Video className="h-12 w-12 text-gray-600 mx-auto mb-3" />
+                  <p className="text-gray-500">Video demonstration coming soon</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -546,7 +558,7 @@ export default function ExerciseDetailPage() {
               onClick={handleCompleteExercise}
               disabled={completing}
               variant="outline"
-              className="w-full text-white border-white/20 hover:bg-white/10"
+              className="w-full text-white border-white/20 hover:bg-black/30"
             >
               {completing ? (
                 <>
@@ -567,7 +579,7 @@ export default function ExerciseDetailPage() {
         <Card className="bg-gradient-to-r from-fire-red/20 to-fire-gold/20 border-fire-red/30 mt-6">
           <CardContent className="p-6 text-center">
             <Star className="h-8 w-8 text-fire-gold mx-auto mb-3" />
-            <p className="text-white font-semibold mb-1">Keep Going, Firefighter!</p>
+            <p className="text-white font-semibold mb-1">Keep Going, {user?.name?.split(' ')[0] || 'Firefighter'}!</p>
             <p className="text-sm text-gray-300">
               Every rep makes you stronger. Every exercise keeps you ready.
             </p>

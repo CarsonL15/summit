@@ -342,7 +342,7 @@ function ClinicFMSAssessmentContent() {
                   <button
                     key={user.id}
                     onClick={() => handleUserSelect(user.id)}
-                    className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-left"
+                    className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-black/30 transition-colors text-left"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -411,7 +411,7 @@ function ClinicFMSAssessmentContent() {
                     variant="outline"
                     size="sm"
                     onClick={() => setSelectedUser('')}
-                    className="bg-white/5 text-white border-white/30 hover:bg-white/10 hover:border-white/50"
+                    className="bg-white/5 text-white border-white/30 hover:bg-black/30 hover:border-white/50"
                   >
                     Change Person
                   </Button>
@@ -444,7 +444,7 @@ function ClinicFMSAssessmentContent() {
                                   score === 1 ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-600' :
                                   score === 2 ? 'bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600' :
                                   'bg-green-600 hover:bg-green-700 text-white border-green-600'
-                                : 'bg-white/5 text-white border-white/20 hover:bg-white/10'
+                                : 'bg-white/5 text-white border-white/20 hover:bg-black/30'
                             }`}
                             onClick={() => handleScoreChange(pattern.leftField!, score)}
                           >
@@ -467,7 +467,7 @@ function ClinicFMSAssessmentContent() {
                                   score === 1 ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-600' :
                                   score === 2 ? 'bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600' :
                                   'bg-green-600 hover:bg-green-700 text-white border-green-600'
-                                : 'bg-white/5 text-white border-white/20 hover:bg-white/10'
+                                : 'bg-white/5 text-white border-white/20 hover:bg-black/30'
                             }`}
                             onClick={() => handleScoreChange(pattern.rightField!, score)}
                           >
@@ -500,7 +500,7 @@ function ClinicFMSAssessmentContent() {
                                 score === 1 ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-600' :
                                 score === 2 ? 'bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600' :
                                 'bg-green-600 hover:bg-green-700 text-white border-green-600'
-                              : 'bg-white/5 text-white border-white/20 hover:bg-white/10'
+                              : 'bg-white/5 text-white border-white/20 hover:bg-black/30'
                           }`}
                           onClick={() => handleScoreChange(pattern.field, score)}
                         >
@@ -539,7 +539,7 @@ function ClinicFMSAssessmentContent() {
                 variant="outline"
                 onClick={() => setCurrentPattern(Math.max(0, currentPattern - 1))}
                 disabled={currentPattern === 0}
-                className="bg-white/5 text-white border-white/20 hover:bg-white/10 disabled:opacity-50"
+                className="bg-white/5 text-white border-white/20 hover:bg-black/30 disabled:opacity-50"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Previous

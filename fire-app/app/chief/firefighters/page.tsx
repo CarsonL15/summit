@@ -161,7 +161,7 @@ export default function TeamManagement() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-4">
               <Link href="/chief">
-                <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
+                <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-black/30">
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   Back
                 </Button>
@@ -198,7 +198,7 @@ export default function TeamManagement() {
                   variant={filterActive === 'all' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFilterActive('all')}
-                  className={filterActive === 'all' ? 'bg-fire-gold text-black hover:bg-yellow-600' : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
+                  className={filterActive === 'all' ? 'bg-fire-gold text-black hover:bg-yellow-600' : 'bg-black/50 text-white border-white/30 hover:bg-black/40 hover:border-white/40'}
                 >
                   All
                 </Button>
@@ -206,7 +206,7 @@ export default function TeamManagement() {
                   variant={filterActive === 'active' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFilterActive('active')}
-                  className={filterActive === 'active' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
+                  className={filterActive === 'active' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-black/50 text-white border-white/30 hover:bg-black/40 hover:border-white/40'}
                 >
                   Active Today
                 </Button>
@@ -214,7 +214,7 @@ export default function TeamManagement() {
                   variant={filterActive === 'inactive' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFilterActive('inactive')}
-                  className={filterActive === 'inactive' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
+                  className={filterActive === 'inactive' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-black/50 text-white border-white/30 hover:bg-black/40 hover:border-white/40'}
                 >
                   Inactive
                 </Button>
