@@ -25,6 +25,7 @@ interface UserWithFMS extends UserData {
   last_fms_score?: number
   last_fms_date?: string
   has_active_series?: boolean
+  station_name?: string
 }
 
 interface ClinicStats {
@@ -121,98 +122,100 @@ export default function ClinicDashboard() {
 
       setUser(userData)
 
-      // Get station info
-      if (userData.station_id) {
-        const { data: stationData } = await supabase
-          .from('stations')
-          .select('*')
-          .eq('id', userData.station_id)
-          .single()
+      // Get ALL stations for department-wide view
+      const { data: allStations } = await supabase
+        .from('stations')
+        .select('*')
+        .order('name')
 
-        if (stationData) {
-          setStation(stationData)
-        }
+      // Use first station for display purposes (department view)
+      if (allStations && allStations.length > 0) {
+        setStation(allStations[0])
+      }
 
-        // Get all users in station (firefighters AND chiefs)
-        const { data: users } = await supabase
-          .from('users')
-          .select('*')
-          .eq('station_id', userData.station_id)
-          .in('role', ['firefighter', 'chief'])
-          .order('name')
+      // Build station name map for display
+      const stationMap = new Map<string, string>()
+      allStations?.forEach(s => stationMap.set(s.id, s.name))
 
-        if (users) {
-          const today = new Date().toISOString().split('T')[0]
+      // Get ALL users across ALL stations (firefighters AND chiefs)
+      const { data: users } = await supabase
+        .from('users')
+        .select('*')
+        .in('role', ['firefighter', 'chief'])
+        .order('name')
 
-          // Get latest FMS scores for all users
-          const { data: fmsScores } = await supabase
-            .from('fms_scores')
-            .select('user_id, total_score, assessed_date')
-            .in('user_id', users.map(u => u.id))
-            .order('assessed_date', { ascending: false })
+      if (users) {
+        const today = new Date().toISOString().split('T')[0]
 
-          // Get active series
-          const { data: activeSeries } = await supabase
-            .from('series_assignments')
-            .select('user_id')
-            .in('user_id', users.map(u => u.id))
-            .eq('completed', false)
-            .gte('end_date', today)
-
-          // Build maps for quick lookups
-          const fmsMap = new Map<string, { score: number; date: string }>()
-          fmsScores?.forEach(score => {
-            if (!fmsMap.has(score.user_id)) {
-              fmsMap.set(score.user_id, { score: score.total_score, date: score.assessed_date })
-            }
-          })
-
-          const activeSeriesSet = new Set(activeSeries?.map(a => a.user_id))
-
-          // Enhance users with FMS data
-          const usersWithFMS: UserWithFMS[] = users.map(u => ({
-            ...u,
-            last_fms_score: fmsMap.get(u.id)?.score,
-            last_fms_date: fmsMap.get(u.id)?.date,
-            has_active_series: activeSeriesSet.has(u.id)
-          }))
-
-          setStationUsers(usersWithFMS)
-          setFilteredUsers(usersWithFMS)
-
-          // Calculate stats
-          const assessedToday = fmsScores?.filter(s => s.assessed_date === today).length || 0
-          const neverAssessed = usersWithFMS.filter(u => !u.last_fms_date).length
-          const needsReassessment = usersWithFMS.filter(u => {
-            if (!u.last_fms_date) return false
-            const daysSince = Math.floor((Date.now() - new Date(u.last_fms_date).getTime()) / (1000 * 60 * 60 * 24))
-            return daysSince > 90
-          }).length
-
-          const scoresArray = Array.from(fmsMap.values()).map(v => v.score)
-          const avgScore = scoresArray.length > 0
-            ? Math.round(scoresArray.reduce((a, b) => a + b, 0) / scoresArray.length * 10) / 10
-            : 0
-
-          setStats({
-            total_users: users.length,
-            assessments_today: assessedToday,
-            pending_assessments: neverAssessed + needsReassessment,
-            average_fms_score: avgScore
-          })
-        }
-
-        // Get recent assessments conducted by this clinic user
-        const { data: recentFMS } = await supabase
+        // Get latest FMS scores for all users
+        const { data: fmsScores } = await supabase
           .from('fms_scores')
-          .select('*')
-          .eq('assessed_by', authUser.id)
-          .order('created_at', { ascending: false })
-          .limit(5)
+          .select('user_id, total_score, assessed_date')
+          .in('user_id', users.map(u => u.id))
+          .order('assessed_date', { ascending: false })
 
-        if (recentFMS) {
-          setRecentAssessments(recentFMS)
-        }
+        // Get active series
+        const { data: activeSeries } = await supabase
+          .from('series_assignments')
+          .select('user_id')
+          .in('user_id', users.map(u => u.id))
+          .eq('completed', false)
+          .gte('end_date', today)
+
+        // Build maps for quick lookups
+        const fmsMap = new Map<string, { score: number; date: string }>()
+        fmsScores?.forEach(score => {
+          if (!fmsMap.has(score.user_id)) {
+            fmsMap.set(score.user_id, { score: score.total_score, date: score.assessed_date })
+          }
+        })
+
+        const activeSeriesSet = new Set(activeSeries?.map(a => a.user_id))
+
+        // Enhance users with FMS data and station name
+        const usersWithFMS: UserWithFMS[] = users.map(u => ({
+          ...u,
+          last_fms_score: fmsMap.get(u.id)?.score,
+          last_fms_date: fmsMap.get(u.id)?.date,
+          has_active_series: activeSeriesSet.has(u.id),
+          station_name: u.station_id ? stationMap.get(u.station_id) : undefined
+        }))
+
+        setStationUsers(usersWithFMS)
+        setFilteredUsers(usersWithFMS)
+
+        // Calculate stats
+        const assessedToday = fmsScores?.filter(s => s.assessed_date === today).length || 0
+        const neverAssessed = usersWithFMS.filter(u => !u.last_fms_date).length
+        const needsReassessment = usersWithFMS.filter(u => {
+          if (!u.last_fms_date) return false
+          const daysSince = Math.floor((Date.now() - new Date(u.last_fms_date).getTime()) / (1000 * 60 * 60 * 24))
+          return daysSince > 90
+        }).length
+
+        const scoresArray = Array.from(fmsMap.values()).map(v => v.score)
+        const avgScore = scoresArray.length > 0
+          ? Math.round(scoresArray.reduce((a, b) => a + b, 0) / scoresArray.length * 10) / 10
+          : 0
+
+        setStats({
+          total_users: users.length,
+          assessments_today: assessedToday,
+          pending_assessments: neverAssessed + needsReassessment,
+          average_fms_score: avgScore
+        })
+      }
+
+      // Get recent assessments conducted by this clinic user
+      const { data: recentFMS } = await supabase
+        .from('fms_scores')
+        .select('*')
+        .eq('assessed_by', authUser.id)
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      if (recentFMS) {
+        setRecentAssessments(recentFMS)
       }
     } catch (error) {
       console.error('Error loading dashboard:', error)
@@ -246,10 +249,10 @@ export default function ClinicDashboard() {
     )
   }
 
-  if (!user || !station) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
-        <div className="text-white">Access denied or station not found</div>
+        <div className="text-white">Access denied</div>
       </div>
     )
   }
@@ -264,7 +267,7 @@ export default function ClinicDashboard() {
               <Activity className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400" />
               <div>
                 <h1 className="text-base sm:text-xl font-bold text-white">Clinic Dashboard</h1>
-                <p className="text-xs sm:text-sm text-gray-400">{station.name}</p>
+                <p className="text-xs sm:text-sm text-gray-400">Spokane Valley Fire Department</p>
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
@@ -276,7 +279,7 @@ export default function ClinicDashboard() {
                 variant="ghost"
                 size="sm"
                 onClick={handleLogout}
-                className="text-gray-400 hover:text-white p-2"
+                className="text-gray-400 hover:text-white hover:bg-black/30 p-2"
               >
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -378,10 +381,10 @@ export default function ClinicDashboard() {
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <Users className="h-5 w-5 text-blue-400" />
-                Station Personnel
+                Department Personnel
               </CardTitle>
               <CardDescription className="text-gray-400">
-                {filteredUsers.length} of {stationUsers.length} shown
+                {filteredUsers.length} of {stationUsers.length} shown (all stations)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -434,7 +437,7 @@ export default function ClinicDashboard() {
                     return (
                       <div
                         key={u.id}
-                        className="p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                        className="p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-black/30 transition-colors"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1 min-w-0">
@@ -447,7 +450,8 @@ export default function ClinicDashboard() {
                                 {u.role === 'chief' ? 'Chief' : 'FF'}
                               </Badge>
                             </div>
-                            <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                            <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 flex-wrap">
+                              {u.station_name && <span className="text-blue-400">{u.station_name}</span>}
                               {u.badge_number && <span>#{u.badge_number}</span>}
                               {u.last_fms_score !== undefined && (
                                 <span className={getRiskTextColor(u.last_fms_score)}>
@@ -485,7 +489,7 @@ export default function ClinicDashboard() {
               </div>
 
               <Link href="/clinic/team">
-                <Button variant="ghost" className="w-full mt-4 text-white/80 hover:text-white hover:bg-white/10">
+                <Button variant="ghost" className="w-full mt-4 text-white/80 hover:text-white hover:bg-black/30">
                   View Full Roster
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>

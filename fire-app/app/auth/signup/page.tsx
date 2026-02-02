@@ -199,7 +199,7 @@ export default function SignUpPage() {
                     variant={role === 'firefighter' ? 'default' : 'outline'}
                     className={role === 'firefighter'
                       ? 'bg-fire-gold hover:bg-yellow-600 text-black'
-                      : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}
+                      : 'bg-white/10 text-white border-white/20 hover:bg-black/40'}
                     onClick={() => setRole('firefighter')}
                   >
                     <Flame className="mr-2 h-4 w-4" />
@@ -210,7 +210,7 @@ export default function SignUpPage() {
                     variant={role === 'chief' ? 'default' : 'outline'}
                     className={role === 'chief'
                       ? 'bg-fire-red hover:bg-red-700 text-white'
-                      : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}
+                      : 'bg-white/10 text-white border-white/20 hover:bg-black/40'}
                     onClick={() => setRole('chief')}
                   >
                     <Shield className="mr-2 h-4 w-4" />

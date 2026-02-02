@@ -24,6 +24,7 @@ interface UserWithFMS extends UserData {
   last_fms_score?: number
   last_fms_date?: string
   has_active_series?: boolean
+  station_name?: string
 }
 
 export default function ClinicTeamPage() {
@@ -100,66 +101,68 @@ export default function ClinicTeamPage() {
 
       setClinicUser(userData)
 
-      // Get station info
-      if (userData.station_id) {
-        const { data: stationData } = await supabase
-          .from('stations')
-          .select('*')
-          .eq('id', userData.station_id)
-          .single()
+      // Get ALL stations for department-wide view
+      const { data: allStations } = await supabase
+        .from('stations')
+        .select('*')
+        .order('name')
 
-        if (stationData) {
-          setStation(stationData)
-        }
+      // Use first station for display purposes
+      if (allStations && allStations.length > 0) {
+        setStation(allStations[0])
+      }
 
-        // Get all users in station (firefighters AND chiefs)
-        const { data: users } = await supabase
-          .from('users')
-          .select('*')
-          .eq('station_id', userData.station_id)
-          .in('role', ['firefighter', 'chief'])
-          .order('role')
-          .order('name')
+      // Build station name map for display
+      const stationMap = new Map<string, string>()
+      allStations?.forEach(s => stationMap.set(s.id, s.name))
 
-        if (users) {
-          const today = new Date().toISOString().split('T')[0]
+      // Get ALL users across ALL stations (firefighters AND chiefs)
+      const { data: users } = await supabase
+        .from('users')
+        .select('*')
+        .in('role', ['firefighter', 'chief'])
+        .order('role')
+        .order('name')
 
-          // Get latest FMS scores for all users
-          const { data: fmsScores } = await supabase
-            .from('fms_scores')
-            .select('user_id, total_score, assessed_date')
-            .in('user_id', users.map(u => u.id))
-            .order('assessed_date', { ascending: false })
+      if (users) {
+        const today = new Date().toISOString().split('T')[0]
 
-          // Get active series
-          const { data: activeSeries } = await supabase
-            .from('series_assignments')
-            .select('user_id')
-            .in('user_id', users.map(u => u.id))
-            .eq('completed', false)
-            .gte('end_date', today)
+        // Get latest FMS scores for all users
+        const { data: fmsScores } = await supabase
+          .from('fms_scores')
+          .select('user_id, total_score, assessed_date')
+          .in('user_id', users.map(u => u.id))
+          .order('assessed_date', { ascending: false })
 
-          // Build maps
-          const fmsMap = new Map<string, { score: number; date: string }>()
-          fmsScores?.forEach(score => {
-            if (!fmsMap.has(score.user_id)) {
-              fmsMap.set(score.user_id, { score: score.total_score, date: score.assessed_date })
-            }
-          })
+        // Get active series
+        const { data: activeSeries } = await supabase
+          .from('series_assignments')
+          .select('user_id')
+          .in('user_id', users.map(u => u.id))
+          .eq('completed', false)
+          .gte('end_date', today)
 
-          const activeSeriesSet = new Set(activeSeries?.map(a => a.user_id))
+        // Build maps
+        const fmsMap = new Map<string, { score: number; date: string }>()
+        fmsScores?.forEach(score => {
+          if (!fmsMap.has(score.user_id)) {
+            fmsMap.set(score.user_id, { score: score.total_score, date: score.assessed_date })
+          }
+        })
 
-          // Enhance users
-          const usersWithFMS: UserWithFMS[] = users.map(u => ({
-            ...u,
-            last_fms_score: fmsMap.get(u.id)?.score,
-            last_fms_date: fmsMap.get(u.id)?.date,
-            has_active_series: activeSeriesSet.has(u.id)
-          }))
+        const activeSeriesSet = new Set(activeSeries?.map(a => a.user_id))
 
-          setStationUsers(usersWithFMS)
-          setFilteredUsers(usersWithFMS)
-        }
+        // Enhance users with station name
+        const usersWithFMS: UserWithFMS[] = users.map(u => ({
+          ...u,
+          last_fms_score: fmsMap.get(u.id)?.score,
+          last_fms_date: fmsMap.get(u.id)?.date,
+          has_active_series: activeSeriesSet.has(u.id),
+          station_name: u.station_id ? stationMap.get(u.station_id) : undefined
+        }))
+
+        setStationUsers(usersWithFMS)
+        setFilteredUsers(usersWithFMS)
       }
     } catch (error) {
       console.error('Error loading data:', error)
@@ -196,14 +199,14 @@ export default function ClinicTeamPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-4">
               <Link href="/clinic">
-                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white hover:bg-black/30">
                   <ArrowLeft className="h-4 w-4 mr-1" />
                   Back
                 </Button>
               </Link>
               <div>
-                <h1 className="text-base sm:text-xl font-bold text-white">Station Roster</h1>
-                <p className="text-xs sm:text-sm text-gray-400">{station?.name}</p>
+                <h1 className="text-base sm:text-xl font-bold text-white">Department Roster</h1>
+                <p className="text-xs sm:text-sm text-gray-400">Spokane Valley Fire Department</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -246,7 +249,7 @@ export default function ClinicTeamPage() {
           </CardContent>
         </Card>
 
-        {/* Station Card */}
+        {/* Department Summary Card */}
         <Card className="bg-white/5 border-white/10 mb-6">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -255,7 +258,7 @@ export default function ClinicTeamPage() {
                   <Activity className="h-5 w-5 text-fire-red" />
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold text-white">{station?.name}</h3>
+                  <h3 className="text-base font-semibold text-white">All Stations</h3>
                   <div className="flex items-center gap-4 mt-1 flex-wrap">
                     <Badge variant="outline" className="text-xs text-fire-gold border-fire-gold/30">
                       <Shield className="h-3 w-3 mr-1" />
@@ -345,7 +348,7 @@ export default function ClinicTeamPage() {
               const needsAssessment = !user.last_fms_date || (daysSince !== null && daysSince > 90)
 
               return (
-                <Card key={user.id} className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
+                <Card key={user.id} className="bg-white/5 border-white/10 hover:bg-black/30 transition-colors">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -372,6 +375,7 @@ export default function ClinicTeamPage() {
                             )}
                           </div>
                           <div className="flex items-center gap-4 mt-1 text-sm text-gray-400 flex-wrap">
+                            {user.station_name && <span className="text-blue-400">{user.station_name}</span>}
                             {user.badge_number && <span>Badge #{user.badge_number}</span>}
                             <span className="flex items-center gap-1">
                               <Mail className="h-3 w-3" />

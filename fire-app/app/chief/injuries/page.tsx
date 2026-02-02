@@ -74,30 +74,32 @@ export default function ChiefInjuriesPage() {
         return
       }
 
-      // Get current user's station
+      // Verify user is a chief
       const { data: currentUser } = await supabase
         .from('users')
-        .select('station_id')
+        .select('role')
         .eq('id', authUser.id)
         .single()
 
-      if (!currentUser?.station_id) return
+      if (!currentUser || (currentUser.role !== 'chief' && currentUser.role !== 'admin')) {
+        router.push('/firefighter')
+        return
+      }
 
-      // Load firefighters for the station
-      const { data: stationFirefighters } = await supabase
+      // Load ALL firefighters across all stations (department-wide view)
+      const { data: allFirefighters } = await supabase
         .from('users')
         .select('*')
-        .eq('station_id', currentUser.station_id)
         .in('role', ['firefighter', 'chief'])
 
-      if (stationFirefighters) {
-        setFirefighters(stationFirefighters)
+      if (allFirefighters) {
+        setFirefighters(allFirefighters)
 
-        // Load latest FMS scores for each firefighter
+        // Load latest FMS scores for all firefighters
         const { data: fmsData } = await supabase
           .from('fms_scores')
           .select('*')
-          .in('user_id', stationFirefighters.map(f => f.id))
+          .in('user_id', allFirefighters.map(f => f.id))
           .order('assessed_date', { ascending: false })
 
         if (fmsData) {
@@ -111,7 +113,7 @@ export default function ChiefInjuriesPage() {
         }
       }
 
-      // Get all injuries with user data
+      // Get ALL injuries with user data (department-wide)
       const { data: injuryData } = await supabase
         .from('injuries')
         .select(`
@@ -121,41 +123,38 @@ export default function ChiefInjuriesPage() {
         .order('injury_date', { ascending: false })
 
       if (injuryData) {
-        // Filter to only this station's users
-        const stationInjuries = injuryData.filter(
-          (inj: any) => inj.user?.station_id === currentUser.station_id
-        )
+        const allInjuries = injuryData as InjuryWithUser[]
 
         // Always calculate total active count (for the Active button)
-        const activeCount = stationInjuries.filter(
+        const activeCount = allInjuries.filter(
           (inj: any) => !inj.return_date && inj.status !== 'closed'
         ).length
         setTotalActiveCount(activeCount)
 
         // Apply time range filter client-side for consistent behavior
-        let filteredInjuries = stationInjuries
+        let filteredInjuries = allInjuries
         const today = new Date()
         if (timeRange === 'active') {
           // Active = no return date and status is not 'closed'
-          filteredInjuries = stationInjuries.filter(
+          filteredInjuries = allInjuries.filter(
             (inj: any) => !inj.return_date && inj.status !== 'closed'
           )
         } else if (timeRange === '30days') {
           const thirtyDaysAgo = new Date(today)
           thirtyDaysAgo.setDate(today.getDate() - 30)
-          filteredInjuries = stationInjuries.filter(
+          filteredInjuries = allInjuries.filter(
             (inj: any) => new Date(inj.injury_date) >= thirtyDaysAgo
           )
         } else if (timeRange === '90days') {
           const ninetyDaysAgo = new Date(today)
           ninetyDaysAgo.setDate(today.getDate() - 90)
-          filteredInjuries = stationInjuries.filter(
+          filteredInjuries = allInjuries.filter(
             (inj: any) => new Date(inj.injury_date) >= ninetyDaysAgo
           )
         }
         // 'all' - no additional filtering needed
 
-        setInjuries(filteredInjuries as InjuryWithUser[])
+        setInjuries(filteredInjuries)
       }
     } catch (error) {
       console.error('Error loading injury data:', error)
@@ -246,12 +245,19 @@ export default function ChiefInjuriesPage() {
   const totalInjuries = injuries.length
   const totalDaysMissed = injuries.reduce((sum, inj) => sum + (inj.days_out || 0), 0)
 
-  // FMS Correlation Analysis (High Risk = FMS < 15)
+  // FMS Correlation Analysis (High/Moderate/Low Risk)
   const injuriesWithFMS = injuries.filter(inj => inj.fms_score_at_time !== null)
   const highRiskInjuries = injuriesWithFMS.filter(inj => getRiskLevel(inj.fms_score_at_time!) === 'high').length
-  const lowRiskInjuries = injuriesWithFMS.filter(inj => getRiskLevel(inj.fms_score_at_time!) !== 'high').length
-  const correlationPercentage = injuriesWithFMS.length > 0
+  const moderateRiskInjuries = injuriesWithFMS.filter(inj => getRiskLevel(inj.fms_score_at_time!) === 'moderate').length
+  const lowRiskInjuries = injuriesWithFMS.filter(inj => getRiskLevel(inj.fms_score_at_time!) === 'low').length
+  const highRiskPercentage = injuriesWithFMS.length > 0
     ? Math.round((highRiskInjuries / injuriesWithFMS.length) * 100)
+    : 0
+  const moderateRiskPercentage = injuriesWithFMS.length > 0
+    ? Math.round((moderateRiskInjuries / injuriesWithFMS.length) * 100)
+    : 0
+  const lowRiskPercentage = injuriesWithFMS.length > 0
+    ? Math.round((lowRiskInjuries / injuriesWithFMS.length) * 100)
     : 0
 
   // Protocol Adherence Analysis
@@ -292,7 +298,7 @@ export default function ChiefInjuriesPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/chief">
-                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white hover:bg-black/30">
                   <ChevronLeft className="h-4 w-4 mr-2" />
                   Back
                 </Button>
@@ -300,8 +306,8 @@ export default function ChiefInjuriesPage() {
               <div className="flex items-center gap-3">
                 <AlertTriangle className="h-8 w-8 text-fire-red" />
                 <div>
-                  <h1 className="text-2xl font-bold text-white">Injury Analytics</h1>
-                  <p className="text-sm text-gray-400">FMS Correlation & Prevention Metrics</p>
+                  <h1 className="text-2xl font-bold text-white">Department Injury Analytics</h1>
+                  <p className="text-sm text-gray-400">Spokane Valley Fire Department - All Stations</p>
                 </div>
               </div>
             </div>
@@ -326,7 +332,7 @@ export default function ChiefInjuriesPage() {
             onClick={() => setTimeRange('active')}
             className={timeRange === 'active'
               ? 'bg-fire-red text-white hover:bg-red-700'
-              : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
+              : 'bg-black/50 text-white border-white/30 hover:bg-black/40 hover:border-white/50'}
           >
             Active ({totalActiveCount})
           </Button>
@@ -336,7 +342,7 @@ export default function ChiefInjuriesPage() {
             onClick={() => setTimeRange('30days')}
             className={timeRange === '30days'
               ? 'bg-fire-gold text-black hover:bg-yellow-600'
-              : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
+              : 'bg-black/50 text-white border-white/30 hover:bg-black/40 hover:border-white/50'}
           >
             Last 30 Days
           </Button>
@@ -346,7 +352,7 @@ export default function ChiefInjuriesPage() {
             onClick={() => setTimeRange('90days')}
             className={timeRange === '90days'
               ? 'bg-fire-gold text-black hover:bg-yellow-600'
-              : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
+              : 'bg-black/50 text-white border-white/30 hover:bg-black/40 hover:border-white/50'}
           >
             Last 90 Days
           </Button>
@@ -356,7 +362,7 @@ export default function ChiefInjuriesPage() {
             onClick={() => setTimeRange('all')}
             className={timeRange === 'all'
               ? 'bg-fire-gold text-black hover:bg-yellow-600'
-              : 'bg-black/50 text-white border-white/30 hover:bg-white/20 hover:border-white/50'}
+              : 'bg-black/50 text-white border-white/30 hover:bg-black/40 hover:border-white/50'}
           >
             All Time
           </Button>
@@ -392,7 +398,7 @@ export default function ChiefInjuriesPage() {
             <AnimatedCardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <Activity className="h-5 w-5 text-red-400" />
-                <span className="text-3xl font-bold text-red-400">{correlationPercentage}%</span>
+                <span className="text-3xl font-bold text-red-400">{highRiskPercentage}%</span>
               </div>
               <p className="text-sm text-gray-400">High-Risk FMS</p>
               <p className="text-xs text-gray-500 mt-1">Of injured had FMS &lt;15</p>
@@ -423,57 +429,63 @@ export default function ChiefInjuriesPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* High Risk FMS Score Injuries */}
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-red-400">High Risk FMS (&lt;15)</h4>
+                  <h4 className="font-semibold text-red-400">High Risk (&lt;15)</h4>
                   <Badge variant="destructive" className="bg-red-600">
-                    {highRiskInjuries} injuries
+                    {highRiskInjuries}
                   </Badge>
                 </div>
-                <p className="text-2xl font-bold text-white mb-1">{correlationPercentage}%</p>
-                <p className="text-xs text-gray-400">of all FMS-tracked injuries</p>
-                <p className="text-xs text-red-400 mt-2">
-                  High-risk firefighters 3x more likely to be injured
-                </p>
+                <p className="text-2xl font-bold text-white mb-1">{highRiskPercentage}%</p>
+                <p className="text-xs text-gray-400">of FMS-tracked injuries</p>
               </div>
 
-              {/* Lower Risk FMS Score Injuries */}
-              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+              {/* Moderate Risk FMS Score Injuries */}
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-green-400">Lower Risk FMS (15+)</h4>
-                  <Badge className="bg-green-600 text-white">
-                    {lowRiskInjuries} injuries
+                  <h4 className="font-semibold text-yellow-400">Moderate (15-17)</h4>
+                  <Badge className="bg-yellow-600 text-white">
+                    {moderateRiskInjuries}
                   </Badge>
                 </div>
-                <p className="text-2xl font-bold text-white mb-1">{100 - correlationPercentage}%</p>
-                <p className="text-xs text-gray-400">of all FMS-tracked injuries</p>
-                <p className="text-xs text-green-400 mt-2">
-                  Lower risk when movement quality is good
-                </p>
+                <p className="text-2xl font-bold text-white mb-1">{moderateRiskPercentage}%</p>
+                <p className="text-xs text-gray-400">of FMS-tracked injuries</p>
+              </div>
+
+              {/* Low Risk FMS Score Injuries */}
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-green-400">Low Risk (18+)</h4>
+                  <Badge className="bg-green-600 text-white">
+                    {lowRiskInjuries}
+                  </Badge>
+                </div>
+                <p className="text-2xl font-bold text-white mb-1">{lowRiskPercentage}%</p>
+                <p className="text-xs text-gray-400">of FMS-tracked injuries</p>
               </div>
 
               {/* Protocol Adherence */}
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-blue-400">Protocol Adherence</h4>
+                  <h4 className="font-semibold text-blue-400">Protocol</h4>
                   <Shield className="h-5 w-5 text-blue-400" />
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-400 flex items-center gap-1">
+                    <span className="text-xs text-gray-400 flex items-center gap-1">
                       <CheckCircle className="h-3 w-3 text-green-400" />
                       Followed
                     </span>
-                    <span className="text-sm font-semibold text-white">{followedProtocol} injuries</span>
+                    <span className="text-sm font-semibold text-white">{followedProtocol}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-400 flex items-center gap-1">
+                    <span className="text-xs text-gray-400 flex items-center gap-1">
                       <XCircle className="h-3 w-3 text-red-400" />
-                      Did Not Follow
+                      Not Followed
                     </span>
-                    <span className="text-sm font-semibold text-white">{notFollowedProtocol} injuries</span>
+                    <span className="text-sm font-semibold text-white">{notFollowedProtocol}</span>
                   </div>
                 </div>
               </div>
@@ -528,7 +540,7 @@ export default function ChiefInjuriesPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowClosed(!showClosed)}
-                  className="bg-black/50 text-white border-white/30 hover:bg-white/20"
+                  className="bg-black/50 text-white border-white/30 hover:bg-black/40"
                 >
                   {showClosed ? 'Show Active' : `Show Closed (${closedInjuries.length})`}
                 </Button>
@@ -571,7 +583,7 @@ export default function ChiefInjuriesPage() {
                   </thead>
                   <tbody>
                     {displayedInjuries.map((injury) => (
-                      <tr key={injury.id} className="border-b border-white/5 hover:bg-white/5">
+                      <tr key={injury.id} className="border-b border-white/5 hover:bg-black/20">
                         <td className="py-3 px-2 text-white">{injury.user?.name || 'Unknown'}</td>
                         <td className="py-3 px-2">
                           <div>

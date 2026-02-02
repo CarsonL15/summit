@@ -136,7 +136,7 @@ export default function SeriesManagement() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-4">
               <Link href="/chief">
-                <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
+                <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-black/30">
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   Back
                 </Button>

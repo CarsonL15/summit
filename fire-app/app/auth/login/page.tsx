@@ -112,7 +112,7 @@ export default function LoginPage() {
                   variant={selectedDemo === 'clinic' ? 'default' : 'outline'}
                   className={selectedDemo === 'clinic'
                     ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}
+                    : 'bg-white/10 text-white border-white/20 hover:bg-black/40'}
                   onClick={() => fillDemoCredentials('clinic')}
                 >
                   <Activity className="mr-1 h-4 w-4" />
@@ -123,7 +123,7 @@ export default function LoginPage() {
                   variant={selectedDemo === 'chief' ? 'default' : 'outline'}
                   className={selectedDemo === 'chief'
                     ? 'bg-fire-red hover:bg-red-700 text-white'
-                    : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}
+                    : 'bg-white/10 text-white border-white/20 hover:bg-black/40'}
                   onClick={() => fillDemoCredentials('chief')}
                 >
                   <Shield className="mr-1 h-4 w-4" />
@@ -134,7 +134,7 @@ export default function LoginPage() {
                   variant={selectedDemo === 'firefighter' ? 'default' : 'outline'}
                   className={selectedDemo === 'firefighter'
                     ? 'bg-fire-gold hover:bg-yellow-600 text-black'
-                    : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}
+                    : 'bg-white/10 text-white border-white/20 hover:bg-black/40'}
                   onClick={() => fillDemoCredentials('firefighter')}
                 >
                   <Flame className="mr-1 h-4 w-4" />

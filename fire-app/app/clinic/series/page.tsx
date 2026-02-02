@@ -117,7 +117,7 @@ export default function SeriesManagementPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-4">
               <Link href="/clinic">
-                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white hover:bg-white/10">
+                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white hover:bg-black/30">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
                 </Button>
@@ -214,7 +214,7 @@ export default function SeriesManagementPage() {
           {filteredSeries.length > 0 ? (
             filteredSeries.map((s) => (
               <Link key={s.id} href={`/clinic/series/${s.id}`} className="block">
-                <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors cursor-pointer">
+                <Card className="bg-white/5 border-white/10 hover:bg-black/30 transition-colors cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">

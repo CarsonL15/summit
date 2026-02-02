@@ -294,7 +294,7 @@ export default function SeriesDetailPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-4">
               <Link href="/clinic/series">
-                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white hover:bg-white/10">
+                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white hover:bg-black/30">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
                 </Button>
@@ -594,7 +594,7 @@ export default function SeriesDetailPage() {
                             <button
                               key={exercise.id}
                               onClick={() => addExerciseToWeek(exercise.id, week)}
-                              className="w-full text-left p-2 rounded hover:bg-white/10 transition-colors"
+                              className="w-full text-left p-2 rounded hover:bg-black/30 transition-colors"
                             >
                               <p className="text-sm text-white">{exercise.name}</p>
                               <p className="text-xs text-gray-400">
@@ -609,7 +609,7 @@ export default function SeriesDetailPage() {
                       <Button
                         variant="outline"
                         onClick={() => setShowExerciseSelector(week)}
-                        className="w-full bg-white/5 border-white/20 border-dashed text-gray-400 hover:text-white hover:bg-white/10"
+                        className="w-full bg-white/5 border-white/20 border-dashed text-gray-400 hover:text-white hover:bg-black/30"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Exercise

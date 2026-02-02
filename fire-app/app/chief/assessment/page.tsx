@@ -328,7 +328,7 @@ export default function FMSAssessment() {
                   <button
                     key={firefighter.id}
                     onClick={() => handleFirefighterSelect(firefighter.id)}
-                    className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-left"
+                    className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-black/30 transition-colors text-left"
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -357,7 +357,7 @@ export default function FMSAssessment() {
                     variant="outline"
                     size="sm"
                     onClick={() => setSelectedFirefighter('')}
-                    className="text-white border-white/30 hover:bg-white/10 hover:border-white/50"
+                    className="text-white border-white/30 hover:bg-black/30 hover:border-white/50"
                   >
                     Change Firefighter
                   </Button>
@@ -390,7 +390,7 @@ export default function FMSAssessment() {
                                   score === 1 ? 'bg-orange-600 hover:bg-orange-700' :
                                   score === 2 ? 'bg-yellow-600 hover:bg-yellow-700' :
                                   'bg-green-600 hover:bg-green-700'
-                                : 'text-white border-white/20 hover:bg-white/10'
+                                : 'text-white border-white/20 hover:bg-black/30'
                             }`}
                             onClick={() => handleScoreChange(pattern.leftField!, score)}
                           >
@@ -413,7 +413,7 @@ export default function FMSAssessment() {
                                   score === 1 ? 'bg-orange-600 hover:bg-orange-700' :
                                   score === 2 ? 'bg-yellow-600 hover:bg-yellow-700' :
                                   'bg-green-600 hover:bg-green-700'
-                                : 'text-white border-white/20 hover:bg-white/10'
+                                : 'text-white border-white/20 hover:bg-black/30'
                             }`}
                             onClick={() => handleScoreChange(pattern.rightField!, score)}
                           >
@@ -446,7 +446,7 @@ export default function FMSAssessment() {
                                 score === 1 ? 'bg-orange-600 hover:bg-orange-700' :
                                 score === 2 ? 'bg-yellow-600 hover:bg-yellow-700' :
                                 'bg-green-600 hover:bg-green-700'
-                              : 'text-white border-white/20 hover:bg-white/10'
+                              : 'text-white border-white/20 hover:bg-black/30'
                           }`}
                           onClick={() => handleScoreChange(pattern.field, score)}
                         >
@@ -485,7 +485,7 @@ export default function FMSAssessment() {
                 variant="outline"
                 onClick={() => setCurrentPattern(Math.max(0, currentPattern - 1))}
                 disabled={currentPattern === 0}
-                className="text-white border-white/20 hover:bg-white/10"
+                className="text-white border-white/20 hover:bg-black/30"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Previous
