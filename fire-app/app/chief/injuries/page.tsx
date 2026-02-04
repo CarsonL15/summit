@@ -503,7 +503,7 @@ export default function ChiefInjuriesPage() {
                     compared to <span className="font-bold text-red-400">{avgDaysNotFollowed.toFixed(1)} days</span> for
                     those who don't follow the protocol.
                   </p>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-3 gap-4 text-sm">
                     <div>
                       <p className="text-gray-400">Cost per day missed</p>
                       <p className="text-lg font-bold text-white">~$450</p>
@@ -512,6 +512,12 @@ export default function ChiefInjuriesPage() {
                       <p className="text-gray-400">Potential savings per injury</p>
                       <p className="text-lg font-bold text-green-400">
                         ${Math.round((avgDaysNotFollowed - avgDaysFollowed) * 450)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400">Total Savings</p>
+                      <p className="text-lg font-bold text-green-400">
+                        ${Math.round((avgDaysNotFollowed - avgDaysFollowed) * 450 * injuries.length).toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -573,7 +579,6 @@ export default function ChiefInjuriesPage() {
                     <tr className="border-b border-white/10">
                       <th className="text-left py-3 px-2 text-gray-400 font-medium">Firefighter</th>
                       <th className="text-left py-3 px-2 text-gray-400 font-medium">Injury</th>
-                      <th className="text-left py-3 px-2 text-gray-400 font-medium">Location</th>
                       <th className="text-center py-3 px-2 text-gray-400 font-medium">FMS Score</th>
                       <th className="text-center py-3 px-2 text-gray-400 font-medium">Days Out</th>
                       <th className="text-center py-3 px-2 text-gray-400 font-medium">Protocol</th>
@@ -602,7 +607,6 @@ export default function ChiefInjuriesPage() {
                             </Badge>
                           </div>
                         </td>
-                        <td className="py-3 px-2 text-gray-400">{injury.body_location}</td>
                         <td className="py-3 px-2 text-center">
                           {injury.fms_score_at_time !== null ? (
                             <Badge
