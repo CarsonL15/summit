@@ -16,7 +16,7 @@ import {
   Target, Zap, Star, AlertTriangle, User, Building2, ChevronDown
 } from 'lucide-react'
 import { Database } from '@/types/database'
-import { getRiskLevel, getRiskTextColor } from '@/lib/utils/fms'
+import { getRiskLevel, getRiskTextColor, getRiskLabel } from '@/lib/utils/fms'
 
 type UserData = Database['public']['Tables']['users']['Row']
 type StationData = Database['public']['Tables']['stations']['Row']
@@ -379,9 +379,16 @@ export default function ChiefDashboard() {
             <AnimatedCardContent className="p-3 sm:p-6">
               <div className="flex items-center justify-between mb-2">
                 <Activity className="h-4 w-4 sm:h-6 sm:w-6 text-blue-400" />
-                <span className="text-xl sm:text-3xl font-bold text-white">{stats.avg_fms_score}</span>
+                <span className={`text-xl sm:text-3xl font-bold ${stats.avg_fms_score > 0 ? getRiskTextColor(stats.avg_fms_score) : 'text-white'}`}>{stats.avg_fms_score}</span>
               </div>
-              <p className="text-xs sm:text-base text-gray-300">Avg FMS</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs sm:text-base text-gray-300">Avg FMS</p>
+                {stats.avg_fms_score > 0 && (
+                  <span className={`text-xs ${getRiskTextColor(stats.avg_fms_score)}`}>
+                    {getRiskLabel(stats.avg_fms_score)}
+                  </span>
+                )}
+              </div>
             </AnimatedCardContent>
           </AnimatedCard>
 

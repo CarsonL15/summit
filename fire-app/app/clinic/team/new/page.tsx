@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { AnimatedCard, AnimatedCardContent, AnimatedCardHeader, AnimatedCardTitle } from '@/components/ui/animated-card'
@@ -11,29 +11,19 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   UserPlus, ChevronLeft, Mail, User, Shield,
-  CheckCircle, AlertCircle, Loader2, Users, Flame
+  CheckCircle, AlertCircle, Loader2
 } from 'lucide-react'
 
 function ClinicAddUserPageContent() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [badgeNumber, setBadgeNumber] = useState('')
-  const [selectedRole, setSelectedRole] = useState<'firefighter' | 'chief'>('firefighter')
   const [isCreating, setIsCreating] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
 
   const router = useRouter()
-  const searchParams = useSearchParams()
   const supabase = createClient()
-
-  // Set role from URL parameter
-  useEffect(() => {
-    const roleParam = searchParams.get('role')
-    if (roleParam === 'chief' || roleParam === 'firefighter') {
-      setSelectedRole(roleParam)
-    }
-  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -111,7 +101,7 @@ function ClinicAddUserPageContent() {
             name: name.trim(),
             email: email.toLowerCase().trim(),
             badge_number: badgeNumber.trim() || null,
-            role: selectedRole,
+            role: 'firefighter',
             station_id: clinicData.station_id,
             points: 0,
             current_streak: 0,
@@ -131,7 +121,7 @@ function ClinicAddUserPageContent() {
             name: name.trim(),
             email: email.toLowerCase().trim(),
             badge_number: badgeNumber.trim() || null,
-            role: selectedRole,
+            role: 'firefighter',
             station_id: clinicData.station_id,
             points: 0,
             current_streak: 0,
@@ -141,8 +131,7 @@ function ClinicAddUserPageContent() {
         if (insertError) throw insertError
       }
 
-      const roleLabel = selectedRole === 'chief' ? 'Chief' : 'Firefighter'
-      setSuccess(`${roleLabel} created successfully! Temporary password: ${tempPassword}`)
+      setSuccess(`Firefighter created successfully! Temporary password: ${tempPassword}`)
 
       // Clear form
       setName('')
@@ -168,7 +157,7 @@ function ClinicAddUserPageContent() {
       <header className="sticky top-0 z-50 border-b border-white/10 bg-black/20 backdrop-blur">
         <div className="container mx-auto px-4 py-3 sm:py-4">
           <div className="flex items-center gap-2 sm:gap-4">
-            <Link href="/clinic/team">
+            <Link href="/clinic">
               <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-black/30">
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 Back
@@ -208,52 +197,17 @@ function ClinicAddUserPageContent() {
         <AnimatedCard className="bg-white/5 border-white/10">
           <AnimatedCardHeader>
             <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-full ${selectedRole === 'chief' ? 'bg-fire-gold/20' : 'bg-fire-red/20'}`}>
-                {selectedRole === 'chief' ? (
-                  <Shield className="h-6 w-6 text-fire-gold" />
-                ) : (
-                  <UserPlus className="h-6 w-6 text-fire-red" />
-                )}
+              <div className="p-3 rounded-full bg-fire-red/20">
+                <UserPlus className="h-6 w-6 text-fire-red" />
               </div>
               <AnimatedCardTitle className="text-white">
-                New {selectedRole === 'chief' ? 'Chief' : 'Firefighter'} Account
+                New Firefighter Account
               </AnimatedCardTitle>
             </div>
           </AnimatedCardHeader>
 
           <AnimatedCardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Role Selection */}
-              <div className="space-y-2">
-                <Label className="text-gray-300">
-                  User Role <span className="text-red-400">*</span>
-                </Label>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    type="button"
-                    variant={selectedRole === 'chief' ? 'default' : 'outline'}
-                    onClick={() => setSelectedRole('chief')}
-                    className={selectedRole === 'chief'
-                      ? 'bg-fire-gold hover:bg-yellow-600 text-black'
-                      : 'bg-white/10 text-white border-white/20 hover:bg-black/40'}
-                  >
-                    <Shield className="mr-2 h-4 w-4" />
-                    Fire Chief
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={selectedRole === 'firefighter' ? 'default' : 'outline'}
-                    onClick={() => setSelectedRole('firefighter')}
-                    className={selectedRole === 'firefighter'
-                      ? 'bg-fire-red hover:bg-red-700 text-white'
-                      : 'bg-white/10 text-white border-white/20 hover:bg-black/40'}
-                  >
-                    <Flame className="mr-2 h-4 w-4" />
-                    Firefighter
-                  </Button>
-                </div>
-              </div>
-
               {/* Name Field */}
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-gray-300">
@@ -310,7 +264,7 @@ function ClinicAddUserPageContent() {
                     value={badgeNumber}
                     onChange={(e) => setBadgeNumber(e.target.value)}
                     className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-500"
-                    placeholder={selectedRole === 'chief' ? 'C-001' : 'FF-1234'}
+                    placeholder="FF-1234"
                     disabled={isCreating}
                   />
                 </div>
@@ -320,23 +274,16 @@ function ClinicAddUserPageContent() {
               </div>
 
               {/* Info Box */}
-              <div className={`p-4 rounded-lg border ${
-                selectedRole === 'chief' ? 'bg-fire-gold/10 border-fire-gold/20' : 'bg-blue-500/10 border-blue-500/20'
-              }`}>
+              <div className="p-4 rounded-lg border bg-blue-500/10 border-blue-500/20">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
-                    selectedRole === 'chief' ? 'text-fire-gold' : 'text-blue-400'
-                  }`} />
-                  <div className={`text-sm ${selectedRole === 'chief' ? 'text-fire-gold/90' : 'text-blue-300'}`}>
+                  <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0 text-blue-400" />
+                  <div className="text-sm text-blue-300">
                     <p className="font-semibold mb-1">Account Creation Process:</p>
                     <ul className="list-disc list-inside space-y-1 text-xs">
                       <li>A temporary password will be automatically generated</li>
-                      <li>The {selectedRole === 'chief' ? 'chief' : 'firefighter'} will be added to your station</li>
+                      <li>The firefighter will be added to your station</li>
                       <li>They can log in immediately using their email and temp password</li>
                       <li>They should change their password after first login</li>
-                      {selectedRole === 'chief' && (
-                        <li className="text-fire-gold">Chiefs will have view-only access to their team</li>
-                      )}
                     </ul>
                   </div>
                 </div>
@@ -347,11 +294,7 @@ function ClinicAddUserPageContent() {
                 <Button
                   type="submit"
                   disabled={isCreating || !name.trim() || !email.trim()}
-                  className={`flex-1 ${
-                    selectedRole === 'chief'
-                      ? 'bg-fire-gold hover:bg-yellow-600 text-black'
-                      : 'bg-fire-red hover:bg-red-700'
-                  }`}
+                  className="flex-1 bg-fire-red hover:bg-red-700"
                 >
                   {isCreating ? (
                     <>
@@ -361,11 +304,11 @@ function ClinicAddUserPageContent() {
                   ) : (
                     <>
                       <UserPlus className="h-4 w-4 mr-2" />
-                      Create {selectedRole === 'chief' ? 'Chief' : 'Firefighter'}
+                      Create Firefighter
                     </>
                   )}
                 </Button>
-                <Link href="/clinic/team" className="flex-1">
+                <Link href="/clinic" className="flex-1">
                   <Button
                     type="button"
                     variant="outline"

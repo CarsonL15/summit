@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import {
   Activity, Users, ClipboardCheck, LogOut, Target, UserPlus,
-  Shield, ChevronRight, Search, AlertCircle, CheckCircle, Clock, Layers
+  ChevronRight, Search, AlertCircle, CheckCircle, Clock, Layers
 } from 'lucide-react'
 import { Database } from '@/types/database'
 import { getRiskLevel, getRiskTextColor } from '@/lib/utils/fms'
@@ -354,13 +354,7 @@ export default function ClinicDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <Link href="/clinic/team/new?role=chief">
-            <Button className="w-full h-auto py-4 bg-fire-gold hover:bg-yellow-600 text-black flex items-center justify-center gap-2">
-              <Shield className="h-5 w-5" />
-              <span>Add Chief</span>
-            </Button>
-          </Link>
+        <div className="grid grid-cols-2 gap-4 mb-8">
           <Link href="/clinic/team/new?role=firefighter">
             <Button className="w-full h-auto py-4 bg-fire-red hover:bg-red-700 text-white flex items-center justify-center gap-2">
               <UserPlus className="h-5 w-5" />

@@ -35,6 +35,7 @@ interface StationWithStats extends StationData {
   highRiskCount: number
   avgFmsScore: number
   needsAssessmentCount: number
+  complianceRate: number
 }
 
 function AnalyticsContent() {
@@ -50,6 +51,7 @@ function AnalyticsContent() {
     totalPersonnel: 0,
     highRiskCount: 0,
     needsAssessmentCount: 0,
+    avgFmsScore: 0,
     avgCompliance: 0
   })
 
@@ -126,7 +128,7 @@ function AnalyticsContent() {
       // Get completion rates for compliance
       const { data: allAssignments } = await supabase
         .from('series_assignments')
-        .select('completion_percentage')
+        .select('user_id, completion_percentage')
         .in('user_id', allFirefighters.map(f => f.id))
 
       // Build maps
@@ -149,6 +151,7 @@ function AnalyticsContent() {
       // Build station stats
       const stationsWithStats: StationWithStats[] = stationsData.map(station => {
         const stationFirefighters = allFirefighters.filter(f => f.station_id === station.id)
+        const stationUserIds = stationFirefighters.map(f => f.id)
 
         let highRisk = 0
         let needsAssessment = 0
@@ -167,12 +170,21 @@ function AnalyticsContent() {
           }
         })
 
+        // Calculate station compliance
+        const stationAssignments = allAssignments?.filter(a =>
+          stationUserIds.includes((a as any).user_id)
+        ) || []
+        const stationCompliance = stationAssignments.length > 0
+          ? Math.round(stationAssignments.reduce((sum, a) => sum + (a.completion_percentage || 0), 0) / stationAssignments.length)
+          : 0
+
         return {
           ...station,
           personnelCount: stationFirefighters.length,
           highRiskCount: highRisk,
           avgFmsScore: fmsCount > 0 ? Math.round((totalFms / fmsCount) * 10) / 10 : 0,
-          needsAssessmentCount: needsAssessment
+          needsAssessmentCount: needsAssessment,
+          complianceRate: stationCompliance
         }
       })
 
@@ -186,10 +198,17 @@ function AnalyticsContent() {
         ? Math.round(allAssignments.reduce((sum, a) => sum + (a.completion_percentage || 0), 0) / allAssignments.length)
         : 0
 
+      // Calculate department avg FMS
+      const allFmsScores = Array.from(fmsMap.values())
+      const avgFmsScore = allFmsScores.length > 0
+        ? Math.round((allFmsScores.reduce((sum, fms) => sum + fms.total_score, 0) / allFmsScores.length) * 10) / 10
+        : 0
+
       setDepartmentStats({
         totalPersonnel,
         highRiskCount: totalHighRisk,
         needsAssessmentCount: totalNeedsAssessment,
+        avgFmsScore,
         avgCompliance
       })
 
@@ -348,7 +367,7 @@ function AnalyticsContent() {
                 </div>
 
                 {/* Key Metrics */}
-                <div className="grid grid-cols-3 gap-4 mt-6">
+                <div className="grid grid-cols-4 gap-4 mt-6">
                   <div className="bg-black/20 rounded-lg p-4 text-center">
                     <p className="text-2xl sm:text-3xl font-bold text-red-400">{departmentStats.highRiskCount}</p>
                     <p className="text-xs sm:text-sm text-gray-400">High Risk</p>
@@ -356,6 +375,10 @@ function AnalyticsContent() {
                   <div className="bg-black/20 rounded-lg p-4 text-center">
                     <p className="text-2xl sm:text-3xl font-bold text-orange-400">{departmentStats.needsAssessmentCount}</p>
                     <p className="text-xs sm:text-sm text-gray-400">Need Assessment</p>
+                  </div>
+                  <div className="bg-black/20 rounded-lg p-4 text-center">
+                    <p className={`text-2xl sm:text-3xl font-bold ${getRiskTextColor(departmentStats.avgFmsScore)}`}>{departmentStats.avgFmsScore}</p>
+                    <p className="text-xs sm:text-sm text-gray-400">Avg FMS</p>
                   </div>
                   <div className="bg-black/20 rounded-lg p-4 text-center">
                     <p className="text-2xl sm:text-3xl font-bold text-green-400">{departmentStats.avgCompliance}%</p>
@@ -393,16 +416,24 @@ function AnalyticsContent() {
                       <ChevronRight className="h-5 w-5 text-gray-500" />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className={`rounded-lg p-4 ${station.highRiskCount > 0 ? 'bg-red-500/10' : 'bg-green-500/10'}`}>
-                        <p className={`text-2xl font-bold ${station.highRiskCount > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className={`rounded-lg p-3 ${station.highRiskCount > 0 ? 'bg-red-500/10' : 'bg-green-500/10'}`}>
+                        <p className={`text-xl font-bold ${station.highRiskCount > 0 ? 'text-red-400' : 'text-green-400'}`}>
                           {station.highRiskCount}
                         </p>
-                        <p className="text-sm text-gray-400">High Risk</p>
+                        <p className="text-xs text-gray-400">High Risk</p>
                       </div>
-                      <div className="bg-blue-500/10 rounded-lg p-4">
-                        <p className="text-2xl font-bold text-blue-400">{station.avgFmsScore}</p>
-                        <p className="text-sm text-gray-400">Avg FMS</p>
+                      <div className="bg-orange-500/10 rounded-lg p-3">
+                        <p className="text-xl font-bold text-orange-400">{station.needsAssessmentCount}</p>
+                        <p className="text-xs text-gray-400">Need Assessment</p>
+                      </div>
+                      <div className="bg-blue-500/10 rounded-lg p-3">
+                        <p className={`text-xl font-bold ${getRiskTextColor(station.avgFmsScore)}`}>{station.avgFmsScore}</p>
+                        <p className="text-xs text-gray-400">Avg FMS</p>
+                      </div>
+                      <div className="bg-green-500/10 rounded-lg p-3">
+                        <p className="text-xl font-bold text-green-400">{station.complianceRate}%</p>
+                        <p className="text-xs text-gray-400">Compliance</p>
                       </div>
                     </div>
                   </AnimatedCardContent>
