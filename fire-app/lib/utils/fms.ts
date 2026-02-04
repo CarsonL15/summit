@@ -52,6 +52,30 @@ export function getRiskBadgeClasses(score: number): string {
 }
 
 /**
+ * Get Tailwind classes for stat cards (background + border)
+ */
+export function getRiskCardClasses(score: number): string {
+  const level = getRiskLevel(score)
+  switch (level) {
+    case 'high': return 'bg-red-500/10 border-red-500/30'
+    case 'moderate': return 'bg-yellow-500/10 border-yellow-500/30'
+    case 'low': return 'bg-green-500/10 border-green-500/30'
+  }
+}
+
+/**
+ * Get Tailwind icon color class for risk level
+ */
+export function getRiskIconColor(score: number): string {
+  const level = getRiskLevel(score)
+  switch (level) {
+    case 'high': return 'text-red-400'
+    case 'moderate': return 'text-yellow-400'
+    case 'low': return 'text-green-400'
+  }
+}
+
+/**
  * Risk level thresholds for filtering
  */
 export const RISK_THRESHOLDS = {

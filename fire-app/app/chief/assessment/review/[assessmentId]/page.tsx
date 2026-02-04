@@ -218,8 +218,8 @@ export default function ChiefAssessmentReview() {
                 <ScoreItem label="Hurdle Step" score={assessment.hurdle_step} />
                 <ScoreItem label="Inline Lunge" score={assessment.inline_lunge} />
                 <ScoreItem label="Shoulder Mobility" score={assessment.shoulder_mobility} />
-                <ScoreItem label="ASLR" score={assessment.active_straight_leg_raise} />
-                <ScoreItem label="Trunk Stability" score={assessment.trunk_stability_pushup} />
+                <ScoreItem label="ASLR" score={assessment.aslr} />
+                <ScoreItem label="Trunk Stability" score={assessment.trunk_stability} />
                 <ScoreItem label="Rotary Stability" score={assessment.rotary_stability} />
               </div>
             </div>
@@ -227,7 +227,7 @@ export default function ChiefAssessmentReview() {
             {/* Assessment Date */}
             <div className="mt-4 flex items-center gap-2 text-sm text-gray-400">
               <Calendar className="h-4 w-4" />
-              <span>Assessed on {new Date(assessment.assessment_date).toLocaleDateString()}</span>
+              <span>Assessed on {new Date(assessment.assessed_date).toLocaleDateString()}</span>
             </div>
           </CardContent>
         </Card>

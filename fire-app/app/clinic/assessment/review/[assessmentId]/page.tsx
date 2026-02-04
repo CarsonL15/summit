@@ -419,7 +419,7 @@ export default function ClinicSeriesAssignmentReview() {
           <div>
             <h2 className="text-xl font-bold text-white mb-4">Series Preview</h2>
             {seriesExercises ? (
-              <Card className="bg-white/5 border-white/10">
+              <Card className="bg-white/5 border-white/10 h-fit">
                 <CardHeader>
                   <div className="flex items-center gap-2 flex-wrap mb-2">
                     <CardTitle className="text-white">{seriesExercises.name}</CardTitle>
@@ -439,9 +439,9 @@ export default function ClinicSeriesAssignmentReview() {
                     {seriesExercises.description}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex flex-col h-full">
                   {/* Dynamic Weeks Display */}
-                  <div className="max-h-96 overflow-y-auto pr-2">
+                  <div className="flex-1 min-h-[400px] max-h-[600px] overflow-y-auto pr-2 scrollbar-dark mb-4">
                     {Object.entries(seriesExercises.exercises)
                       .sort(([a], [b]) => Number(a) - Number(b))
                       .map(([weekNum, exercises]) => {
