@@ -534,44 +534,23 @@ export default function ExerciseDetailPage() {
             )}
           </Button>
         ) : (
-          <div className="space-y-4">
-            <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="h-6 w-6 text-green-400" />
-                  <div>
-                    <p className="font-semibold text-white">Exercise Completed!</p>
-                    <p className="text-sm text-gray-400">
-                      {pointsEarned > 0 ? `You earned ${pointsEarned} points!` : 'Already completed today'}
-                    </p>
-                  </div>
+          <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="h-6 w-6 text-green-400" />
+                <div>
+                  <p className="font-semibold text-white">Exercise Completed!</p>
+                  <p className="text-sm text-gray-400">
+                    {pointsEarned > 0 ? `You earned ${pointsEarned} points!` : 'Already completed today'}
+                  </p>
                 </div>
-                {pointsEarned > 0 && (
-                  <Badge className="bg-fire-gold/20 text-fire-gold border-fire-gold/30">
-                    +{pointsEarned} pts
-                  </Badge>
-                )}
               </div>
-            </div>
-
-            <Button
-              onClick={handleCompleteExercise}
-              disabled={completing}
-              variant="outline"
-              className="w-full text-white border-white/20 hover:bg-black/30"
-            >
-              {completing ? (
-                <>
-                  <Activity className="h-4 w-4 mr-2 animate-spin" />
-                  Completing...
-                </>
-              ) : (
-                <>
-                  <Repeat className="h-4 w-4 mr-2" />
-                  Complete Again (No Points)
-                </>
+              {pointsEarned > 0 && (
+                <Badge className="bg-fire-gold/20 text-fire-gold border-fire-gold/30">
+                  +{pointsEarned} pts
+                </Badge>
               )}
-            </Button>
+            </div>
           </div>
         )}
 
