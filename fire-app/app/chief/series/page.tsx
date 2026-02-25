@@ -216,7 +216,7 @@ export default function SeriesManagement() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-white font-medium">
-                          {assignment.user?.name || 'Unknown'}
+                          Firefighter
                         </p>
                         <p className="text-sm text-gray-400">
                           {assignment.series?.name || 'Unknown Series'}
@@ -268,8 +268,7 @@ export default function SeriesManagement() {
                       key={firefighter.id}
                       className="p-3 rounded-lg bg-white/5 border border-white/10"
                     >
-                      <p className="text-sm font-medium text-white">{firefighter.name}</p>
-                      <p className="text-xs text-gray-400">Badge #{firefighter.badge_number}</p>
+                      <p className="text-sm font-medium text-white">Firefighter</p>
                       <Button
                         size="sm"
                         className="w-full mt-2 bg-fire-red hover:bg-red-700"

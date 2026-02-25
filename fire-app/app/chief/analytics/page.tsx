@@ -8,7 +8,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { AnimatedCard, AnimatedCardContent } from '@/components/ui/animated-card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Shield, Users, Activity, ChevronLeft, ChevronRight, Target,
@@ -252,9 +251,7 @@ function AnalyticsContent() {
   // Filter firefighters
   const filteredFirefighters = firefighters.filter(ff => {
     // Search filter
-    const matchesSearch = !searchTerm ||
-      ff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ff.badge_number?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = true // Search disabled for privacy
 
     if (!matchesSearch) return false
 
@@ -285,7 +282,7 @@ function AnalyticsContent() {
     if (riskOrder[aRisk] !== riskOrder[bRisk]) {
       return riskOrder[aRisk] - riskOrder[bRisk]
     }
-    return a.name.localeCompare(b.name)
+    return (a.last_activity_date || '').localeCompare(b.last_activity_date || '')
   })
 
   const getRiskIndicator = (fms?: FMSScoreData) => {
@@ -603,20 +600,10 @@ function AnalyticsContent() {
               </Card>
             )}
 
-            {/* Search and Filters */}
+            {/* Filters */}
             <Card className="bg-white/5 border-white/10 mb-6">
               <CardContent className="p-4">
                 <div className="flex flex-col gap-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      type="text"
-                      placeholder="Search by name or badge..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-500"
-                    />
-                  </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
@@ -692,10 +679,9 @@ function AnalyticsContent() {
                           {/* Name and Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-semibold text-white truncate">{ff.name}</p>
-                              {ff.role === 'chief' && (
-                                <Badge className="text-xs bg-fire-gold/20 text-fire-gold border-fire-gold/30">Chief</Badge>
-                              )}
+                              <p className="font-semibold text-white truncate">
+                                {ff.role === 'chief' ? 'Chief' : 'Firefighter'}
+                              </p>
                               {ff.lastFMS && (
                                 <Badge className={`text-xs ${
                                   getRiskLevel(ff.lastFMS.total_score) === 'high' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
@@ -708,7 +694,6 @@ function AnalyticsContent() {
                               )}
                             </div>
                             <div className="flex items-center gap-4 mt-1 text-sm text-gray-400 flex-wrap">
-                              <span>Badge #{ff.badge_number}</span>
                               <span className={ff.lastFMS ? getRiskTextColor(ff.lastFMS.total_score) : 'text-gray-500'}>
                                 FMS: {ff.lastFMS ? `${ff.lastFMS.total_score}/21` : 'N/A'}
                               </span>

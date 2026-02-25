@@ -438,8 +438,7 @@ export default function ChiefDashboard() {
                           #{index + 1}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-white">{firefighter.name}</p>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap">
                             {selectedStation === 'all' && firefighter.station_name && (
                               <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
                                 {firefighter.station_name}
