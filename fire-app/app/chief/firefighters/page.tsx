@@ -7,7 +7,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Shield, Users, Trophy, Flame, Activity, Calendar,
@@ -31,7 +30,6 @@ interface FirefighterWithDetails extends UserData {
 export default function TeamManagement() {
   const [user, setUser] = useState<UserData | null>(null)
   const [firefighters, setFirefighters] = useState<FirefighterWithDetails[]>([])
-  const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all')
   const router = useRouter()
@@ -130,16 +128,13 @@ export default function TeamManagement() {
   }
 
   const filteredFirefighters = firefighters.filter(firefighter => {
-    const matchesSearch = firefighter.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         firefighter.badge_number?.includes(searchTerm)
-
     const today = new Date().toISOString().split('T')[0]
     const isActive = firefighter.last_activity_date === today
 
     if (filterActive === 'active' && !isActive) return false
     if (filterActive === 'inactive' && isActive) return false
 
-    return matchesSearch
+    return true
   })
 
   if (loading) {
@@ -183,16 +178,6 @@ export default function TeamManagement() {
         <Card className="bg-white/5 border-white/10 mb-6">
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search by name or badge number..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-500"
-                />
-              </div>
               <div className="flex gap-2">
                 <Button
                   variant={filterActive === 'all' ? 'default' : 'outline'}
@@ -230,10 +215,7 @@ export default function TeamManagement() {
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-white text-base">{firefighter.name}</CardTitle>
-                    <CardDescription className="text-gray-400">
-                      Badge #{firefighter.badge_number}
-                    </CardDescription>
+                    <CardTitle className="text-white text-base">Firefighter</CardTitle>
                   </div>
                   <div className="flex items-center gap-2">
                     {firefighter.last_activity_date === new Date().toISOString().split('T')[0] && (

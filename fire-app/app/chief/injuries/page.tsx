@@ -577,7 +577,7 @@ export default function ChiefInjuriesPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-white/10">
-                      <th className="text-left py-3 px-2 text-gray-400 font-medium">Firefighter</th>
+                      <th className="text-left py-3 px-2 text-gray-400 font-medium">Personnel</th>
                       <th className="text-left py-3 px-2 text-gray-400 font-medium">Injury</th>
                       <th className="text-center py-3 px-2 text-gray-400 font-medium">FMS Score</th>
                       <th className="text-center py-3 px-2 text-gray-400 font-medium">Days Out</th>
@@ -589,7 +589,7 @@ export default function ChiefInjuriesPage() {
                   <tbody>
                     {displayedInjuries.map((injury) => (
                       <tr key={injury.id} className="border-b border-white/5 hover:bg-black/20">
-                        <td className="py-3 px-2 text-white">{injury.user?.name || 'Unknown'}</td>
+                        <td className="py-3 px-2 text-white">{injury.user?.role === 'chief' ? 'Chief' : 'Firefighter'}</td>
                         <td className="py-3 px-2">
                           <div>
                             <p className="text-white">{injury.injury_type}</p>
@@ -689,9 +689,11 @@ export default function ChiefInjuriesPage() {
                   onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
                   className="w-full mt-1 bg-white/5 border border-white/10 rounded-md p-2 text-white"
                 >
-                  <option value="">Select firefighter...</option>
-                  {firefighters.map(ff => (
-                    <option key={ff.id} value={ff.id}>{ff.name}</option>
+                  <option value="">Select personnel...</option>
+                  {firefighters.map((ff, index) => (
+                    <option key={ff.id} value={ff.id}>
+                      {ff.role === 'chief' ? 'Chief' : 'Firefighter'} #{index + 1}
+                    </option>
                   ))}
                 </select>
                 {formData.user_id && fmsScores.get(formData.user_id) && (
