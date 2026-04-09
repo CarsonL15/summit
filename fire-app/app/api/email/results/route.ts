@@ -94,40 +94,14 @@ export async function POST(request: NextRequest) {
     const safeWeakAreas = (weakAreas || []).map((area: string) => escapeHtml(area))
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fire-app.vercel.app'
-
-    // Generate a password reset link via Supabase Admin API
-    // This lets the firefighter set their password on first login
-    let signupLink = `${appUrl}/auth/login`
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-    if (supabaseUrl && serviceRoleKey) {
-      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-        auth: { autoRefreshToken: false, persistSession: false }
-      })
-
-      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'recovery',
-        email: firefighterEmail,
-        options: {
-          redirectTo: `${appUrl}/auth/reset-password`,
-        }
-      })
-
-      if (linkError) {
-        // Fall back to login page if link generation fails
-      } else if (linkData?.properties?.action_link) {
-        signupLink = linkData.properties.action_link
-      }
-    }
+    const loginLink = `${appUrl}/auth/login`
 
     const html = buildResultsEmailHtml({
       firefighterName: safeName,
       riskLevel: riskLevel || 'Moderate',
       weakAreas: safeWeakAreas,
       totalScore: totalScore || 0,
-      appLink: signupLink,
+      appLink: loginLink,
     })
 
     const text = buildResultsEmailText({
@@ -135,7 +109,7 @@ export async function POST(request: NextRequest) {
       riskLevel: riskLevel || 'Moderate',
       weakAreas: safeWeakAreas,
       totalScore: totalScore || 0,
-      appLink: signupLink,
+      appLink: loginLink,
     })
 
     const { data, error } = await getResend().emails.send({
