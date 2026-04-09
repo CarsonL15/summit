@@ -211,6 +211,8 @@ export default function AssessorSeriesAssignmentReview() {
         .insert({
           user_id: assessment.user_id,
           series_id: selectedSeries,
+          assigned_by: authUser?.id || null,
+          fms_score_id: assessmentId,
           start_date: startDate.toISOString().split('T')[0],
           end_date: endDate.toISOString().split('T')[0],
           current_week: 1,
