@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 // Routes that require authentication and specific roles
 const protectedRoutes: Record<string, string[]> = {
+  '/admin': ['admin'],
   '/firefighter': ['firefighter', 'admin'],
   '/chief': ['chief', 'admin'],
   '/clinic': ['clinic', 'admin'],
@@ -62,7 +63,8 @@ export async function middleware(request: NextRequest) {
 
     if (!role || !protectedRoutes[matchedRoute].includes(role)) {
       // Wrong role — redirect to correct dashboard
-      const redirectPath = role === 'chief' ? '/chief'
+      const redirectPath = role === 'admin' ? '/admin'
+        : role === 'chief' ? '/chief'
         : role === 'clinic' ? '/clinic'
         : role === 'assessor' ? '/assessor'
         : role === 'firefighter' ? '/firefighter'
@@ -92,7 +94,8 @@ export async function middleware(request: NextRequest) {
     const role = (userData as { role: string } | null)?.role
 
     if (role) {
-      const redirectPath = role === 'chief' ? '/chief'
+      const redirectPath = role === 'admin' ? '/admin'
+        : role === 'chief' ? '/chief'
         : role === 'clinic' ? '/clinic'
         : role === 'assessor' ? '/assessor'
         : '/firefighter'
@@ -112,6 +115,7 @@ export const config = {
     '/chief/:path*',
     '/clinic/:path*',
     '/assessor/:path*',
+    '/admin/:path*',
     '/auth/login',
     '/auth/signup',
     '/profile/:path*',
