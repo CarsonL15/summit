@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createClient as createServerClient } from '@/lib/supabase/server'
-import { resend, FROM_EMAIL } from '@/lib/email/resend'
+import { getResend, FROM_EMAIL } from '@/lib/email/resend'
 import { buildResultsEmailHtml, buildResultsEmailText } from '@/lib/email/templates/results'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
       appLink: signupLink,
     })
 
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResend().emails.send({
       from: FROM_EMAIL,
       to: firefighterEmail,
       subject: 'Your Results Are In – Take the Next Step in Your Performance',
