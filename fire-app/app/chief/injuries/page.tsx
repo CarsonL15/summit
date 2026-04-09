@@ -89,8 +89,9 @@ export default function ChiefInjuriesPage() {
       // Load ALL firefighters across all stations (department-wide view)
       const { data: allFirefighters } = await supabase
         .from('users')
-        .select('*')
+        .select('id, name, role, badge_number, station_id, email, points, current_streak, longest_streak, last_activity_date, created_at, updated_at')
         .in('role', ['firefighter', 'chief'])
+        .limit(500)
 
       if (allFirefighters) {
         setFirefighters(allFirefighters)
@@ -117,10 +118,13 @@ export default function ChiefInjuriesPage() {
       const { data: injuryData } = await supabase
         .from('injuries')
         .select(`
-          *,
-          user:user_id (*)
+          id, user_id, injury_type, body_location, injury_date, days_out, return_date,
+          fms_score_at_time, followed_protocol, severity, cost_impact, status, notes,
+          created_at, updated_at,
+          user:user_id (id, name, badge_number, role, station_id)
         `)
         .order('injury_date', { ascending: false })
+        .limit(200) as { data: any[] | null; error: any }
 
       if (injuryData) {
         const allInjuries = injuryData as InjuryWithUser[]
@@ -157,7 +161,7 @@ export default function ChiefInjuriesPage() {
         setInjuries(filteredInjuries)
       }
     } catch (error) {
-      console.error('Error loading injury data:', error)
+      // Error loading injury data
     } finally {
       setLoading(false)
     }
@@ -205,7 +209,6 @@ export default function ChiefInjuriesPage() {
       setShowAddModal(false)
       loadInjuryData() // Refresh data
     } catch (error) {
-      console.error('Error adding injury:', error)
       alert('Failed to add injury. Please try again.')
     } finally {
       setSaving(false)
@@ -227,7 +230,7 @@ export default function ChiefInjuriesPage() {
 
       loadInjuryData()
     } catch (error) {
-      console.error('Error closing injury:', error)
+      // Error closing injury
     }
   }
 

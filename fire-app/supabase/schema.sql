@@ -21,7 +21,7 @@ CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE,
-  role VARCHAR(20) NOT NULL CHECK (role IN ('firefighter', 'chief', 'admin')),
+  role VARCHAR(20) NOT NULL CHECK (role IN ('firefighter', 'chief', 'admin', 'clinic', 'assessor')),
   station_id UUID REFERENCES stations(id) ON DELETE CASCADE,
   badge_number VARCHAR(50),
   points INTEGER DEFAULT 0,
@@ -32,20 +32,57 @@ CREATE TABLE users (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- FMS Scores table (simplified for demo)
+-- FMS Scores table
 CREATE TABLE fms_scores (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   assessed_by UUID REFERENCES users(id),
   total_score INTEGER NOT NULL CHECK (total_score >= 0 AND total_score <= 21),
+  -- Per-pattern FMS scores (after pain/clearing/min applied, 0-3)
   deep_squat INTEGER CHECK (deep_squat >= 0 AND deep_squat <= 3),
   hurdle_step INTEGER CHECK (hurdle_step >= 0 AND hurdle_step <= 3),
   inline_lunge INTEGER CHECK (inline_lunge >= 0 AND inline_lunge <= 3),
   shoulder_mobility INTEGER CHECK (shoulder_mobility >= 0 AND shoulder_mobility <= 3),
-  aslr INTEGER CHECK (aslr >= 0 AND aslr <= 3), -- Active Straight Leg Raise
+  aslr INTEGER CHECK (aslr >= 0 AND aslr <= 3),
   trunk_stability INTEGER CHECK (trunk_stability >= 0 AND trunk_stability <= 3),
   rotary_stability INTEGER CHECK (rotary_stability >= 0 AND rotary_stability <= 3),
-  weak_areas JSONB, -- Stores which areas need work
+  -- Raw L/R scores (1-3, as entered before pain/clearing zeroing)
+  deep_squat_raw INTEGER CHECK (deep_squat_raw >= 1 AND deep_squat_raw <= 3),
+  hurdle_step_left INTEGER CHECK (hurdle_step_left >= 1 AND hurdle_step_left <= 3),
+  hurdle_step_right INTEGER CHECK (hurdle_step_right >= 1 AND hurdle_step_right <= 3),
+  inline_lunge_left INTEGER CHECK (inline_lunge_left >= 1 AND inline_lunge_left <= 3),
+  inline_lunge_right INTEGER CHECK (inline_lunge_right >= 1 AND inline_lunge_right <= 3),
+  shoulder_mobility_left INTEGER CHECK (shoulder_mobility_left >= 1 AND shoulder_mobility_left <= 3),
+  shoulder_mobility_right INTEGER CHECK (shoulder_mobility_right >= 1 AND shoulder_mobility_right <= 3),
+  aslr_left INTEGER CHECK (aslr_left >= 1 AND aslr_left <= 3),
+  aslr_right INTEGER CHECK (aslr_right >= 1 AND aslr_right <= 3),
+  trunk_stability_raw INTEGER CHECK (trunk_stability_raw >= 1 AND trunk_stability_raw <= 3),
+  rotary_stability_left INTEGER CHECK (rotary_stability_left >= 1 AND rotary_stability_left <= 3),
+  rotary_stability_right INTEGER CHECK (rotary_stability_right >= 1 AND rotary_stability_right <= 3),
+  -- Per-side pain flags (14 total: 2 per movement × 7 movements)
+  deep_squat_pain_left BOOLEAN DEFAULT false,
+  deep_squat_pain_right BOOLEAN DEFAULT false,
+  hurdle_step_pain_left BOOLEAN DEFAULT false,
+  hurdle_step_pain_right BOOLEAN DEFAULT false,
+  inline_lunge_pain_left BOOLEAN DEFAULT false,
+  inline_lunge_pain_right BOOLEAN DEFAULT false,
+  shoulder_mobility_pain_left BOOLEAN DEFAULT false,
+  shoulder_mobility_pain_right BOOLEAN DEFAULT false,
+  aslr_pain_left BOOLEAN DEFAULT false,
+  aslr_pain_right BOOLEAN DEFAULT false,
+  trunk_stability_pain_left BOOLEAN DEFAULT false,
+  trunk_stability_pain_right BOOLEAN DEFAULT false,
+  rotary_stability_pain_left BOOLEAN DEFAULT false,
+  rotary_stability_pain_right BOOLEAN DEFAULT false,
+  -- Clearing test results (true = pass, false = fail)
+  clearing_ankle BOOLEAN,       -- fails → inline_lunge FMS = 0
+  clearing_shoulder BOOLEAN,    -- fails → shoulder_mobility FMS = 0
+  clearing_extension BOOLEAN,   -- fails → trunk_stability FMS = 0
+  clearing_flexion BOOLEAN,     -- fails → rotary_stability FMS = 0
+  -- Mobility scores (sum of raw scores per side, unaffected by pain/clearing)
+  left_mobility_score INTEGER,
+  right_mobility_score INTEGER,
+  weak_areas JSONB,
   notes TEXT,
   assessed_date DATE DEFAULT CURRENT_DATE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

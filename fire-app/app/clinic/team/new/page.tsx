@@ -3,7 +3,6 @@
 import { useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import { AnimatedCard, AnimatedCardContent, AnimatedCardHeader, AnimatedCardTitle } from '@/components/ui/animated-card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,7 +22,6 @@ function ClinicAddUserPageContent() {
   const [error, setError] = useState('')
 
   const router = useRouter()
-  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,106 +30,23 @@ function ClinicAddUserPageContent() {
     setSuccess('')
 
     try {
-      // Get current clinic user
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-      if (!authUser) {
-        router.push('/auth/login')
-        return
-      }
-
-      // Get clinic user's profile to get station_id
-      const { data: clinicData } = await supabase
-        .from('users')
-        .select('station_id, role')
-        .eq('id', authUser.id)
-        .single()
-
-      if (!clinicData || !clinicData.station_id) {
-        throw new Error('Clinic profile not found or no station assigned')
-      }
-
-      if (clinicData.role !== 'clinic' && clinicData.role !== 'admin') {
-        throw new Error('Only clinic staff can create new users')
-      }
-
-      // Check if email already exists
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email.toLowerCase().trim())
-        .single()
-
-      if (existingUser) {
-        throw new Error('A user with this email already exists')
-      }
-
-      // Generate a temporary password
-      const tempPassword = `FireFMS${Math.random().toString(36).slice(-8)}`
-
-      // Create auth user
-      const { data: newAuthUser, error: authError } = await supabase.auth.admin.createUser({
-        email: email.toLowerCase().trim(),
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: {
-          name: name.trim()
-        }
+      const response = await fetch('/api/users/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.toLowerCase().trim(),
+          badgeNumber: badgeNumber.trim() || null,
+        }),
       })
 
-      if (authError) {
-        // If admin.createUser is not available, use signUp
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: email.toLowerCase().trim(),
-          password: tempPassword,
-          options: {
-            data: {
-              name: name.trim()
-            }
-          }
-        })
+      const result = await response.json()
 
-        if (signUpError) throw signUpError
-        if (!signUpData.user) throw new Error('Failed to create user account')
-
-        // Insert user record
-        const { error: insertError } = await supabase
-          .from('users')
-          .insert({
-            id: signUpData.user.id,
-            name: name.trim(),
-            email: email.toLowerCase().trim(),
-            badge_number: badgeNumber.trim() || null,
-            role: 'firefighter',
-            station_id: clinicData.station_id,
-            points: 0,
-            current_streak: 0,
-            longest_streak: 0
-          })
-
-        if (insertError) throw insertError
-
-      } else {
-        if (!newAuthUser.user) throw new Error('Failed to create user account')
-
-        // Insert user record
-        const { error: insertError } = await supabase
-          .from('users')
-          .insert({
-            id: newAuthUser.user.id,
-            name: name.trim(),
-            email: email.toLowerCase().trim(),
-            badge_number: badgeNumber.trim() || null,
-            role: 'firefighter',
-            station_id: clinicData.station_id,
-            points: 0,
-            current_streak: 0,
-            longest_streak: 0
-          })
-
-        if (insertError) throw insertError
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create account')
       }
 
-      setSuccess(`Firefighter created successfully! Temporary password: ${tempPassword}`)
+      setSuccess(`Firefighter created successfully! Temporary password: ${result.tempPassword}`)
 
       // Clear form
       setName('')
@@ -144,7 +59,6 @@ function ClinicAddUserPageContent() {
       }, 3000)
 
     } catch (error: any) {
-      console.error('Error creating user:', error)
       setError(error.message || 'Failed to create account')
     } finally {
       setIsCreating(false)

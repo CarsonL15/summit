@@ -73,7 +73,7 @@ export default function SeriesCustomizer() {
   const supabase = createClient()
 
   // Get unique categories from exercises
-  const categories = [...new Set(exercises.map(e => e.category).filter(Boolean))]
+  const categories = Array.from(new Set(exercises.map(e => e.category).filter((c): c is string => Boolean(c))))
 
   useEffect(() => {
     loadData()
@@ -110,7 +110,7 @@ export default function SeriesCustomizer() {
         setExercises(exercisesData)
       }
     } catch (error) {
-      console.error('Error loading data:', error)
+      // Error loading data
     } finally {
       setLoading(false)
     }
@@ -304,7 +304,6 @@ export default function SeriesCustomizer() {
 
       router.push('/clinic/series')
     } catch (error) {
-      console.error('Error saving series:', error)
       alert('Failed to save series. Please try again.')
     } finally {
       setSaving(false)

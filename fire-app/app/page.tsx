@@ -47,12 +47,6 @@ export default function FireLandingPage() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
-              <Link href="/auth/signup">
-                <Button size="lg" className="bg-fire-red hover:bg-red-700 text-white w-full sm:w-auto">
-                  <Shield className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                  Get Started
-                </Button>
-              </Link>
               <Link href="/auth/login">
                 <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-black/40 w-full sm:w-auto">
                   Sign In
@@ -150,17 +144,12 @@ export default function FireLandingPage() {
               Ready to Get Your Department Started?
             </h3>
             <p className="text-sm sm:text-base text-gray-300 mb-6 sm:mb-8 max-w-2xl mx-auto px-4">
-              Create your account today and see how FireFMS can help reduce injuries and improve
+              See how FireFMS can help reduce injuries and improve
               performance across your entire department.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/auth/signup">
-                <Button size="lg" className="bg-white text-slate-900 hover:bg-gray-100 w-full sm:w-auto">
-                  Create Free Account
-                </Button>
-              </Link>
               <Link href="/auth/login">
-                <Button size="lg" variant="outline" className="bg-white/10 text-white border-white/30 hover:bg-black/40 w-full sm:w-auto">
+                <Button size="lg" className="bg-white text-slate-900 hover:bg-gray-100 w-full sm:w-auto">
                   Sign In
                 </Button>
               </Link>
@@ -169,13 +158,11 @@ export default function FireLandingPage() {
         </Card>
       </div>
 
-      {/* Demo Accounts Info */}
+      {/* Footer */}
       <div className="container mx-auto px-4 pb-12">
         <div className="text-center">
           <p className="text-gray-500 text-sm">
-            Demo Accounts: chief@firestation1.com (Chief) | john@firestation1.com (Firefighter)
-            <br />
-            Password: demo123
+            Functional Movement Screen for First Responders
           </p>
         </div>
       </div>

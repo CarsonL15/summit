@@ -79,7 +79,7 @@ function AnalyticsContent() {
 
       const { data: userData } = await supabase
         .from('users')
-        .select('*')
+        .select('id, name, role, station_id, email, badge_number, points, current_streak, longest_streak, last_activity_date, created_at, updated_at')
         .eq('id', authUser.id)
         .single()
 
@@ -93,7 +93,7 @@ function AnalyticsContent() {
       // Get ALL stations for department-wide view
       const { data: stationsData } = await supabase
         .from('stations')
-        .select('*')
+        .select('id, name, department, location, city, state, created_at, updated_at')
         .order('name')
 
       if (!stationsData) return
@@ -101,10 +101,11 @@ function AnalyticsContent() {
       // Get all firefighters across stations
       const { data: allFirefighters } = await supabase
         .from('users')
-        .select('*')
+        .select('id, name, role, station_id, last_activity_date, email, badge_number, points, current_streak, longest_streak, created_at, updated_at')
         .in('station_id', stationsData.map(s => s.id))
         .in('role', ['firefighter', 'chief'])
         .neq('id', authUser.id)
+        .limit(500)
 
       if (!allFirefighters) return
 
@@ -122,7 +123,7 @@ function AnalyticsContent() {
         .select('*, series(*)')
         .in('user_id', allFirefighters.map(f => f.id))
         .eq('completed', false)
-        .gte('end_date', today)
+        .gte('end_date', today) as { data: any[] | null; error: any }
 
       // Get completion rates for compliance
       const { data: allAssignments } = await supabase
@@ -138,7 +139,7 @@ function AnalyticsContent() {
         }
       })
 
-      const seriesMap = new Map<string, typeof activeSeries[0]>()
+      const seriesMap = new Map<string, any>()
       activeSeries?.forEach(assignment => {
         seriesMap.set(assignment.user_id, assignment)
       })
@@ -234,7 +235,7 @@ function AnalyticsContent() {
       }
 
     } catch (error) {
-      console.error('Error loading analytics:', error)
+      // Error loading analytics
     } finally {
       setLoading(false)
     }
@@ -652,21 +653,10 @@ function AnalyticsContent() {
                 const daysSince = getDaysSinceAssessment(ff.lastAssessedDate)
                 const needsAssessment = !ff.lastFMS || (daysSince !== null && daysSince > 90)
 
-                // Determine click destination
-                const handleCardClick = () => {
-                  if (ff.lastFMS) {
-                    router.push(`/chief/assessment/review/${ff.lastFMS.id}`)
-                  } else {
-                    // No FMS - go to assessment page to create one
-                    router.push(`/chief/assessment?user=${ff.id}`)
-                  }
-                }
-
                 return (
                   <Card
                     key={ff.id}
-                    className="bg-white/5 border-white/10 hover:bg-black/30 transition-colors cursor-pointer"
-                    onClick={handleCardClick}
+                    className="bg-white/5 border-white/10 transition-colors"
                   >
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between gap-4">

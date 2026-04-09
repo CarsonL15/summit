@@ -32,8 +32,8 @@ export default function SignUpPage() {
 
     try {
       // Validation
-      if (password.length < 6) {
-        throw new Error('Password must be at least 6 characters')
+      if (password.length < 8) {
+        throw new Error('Password must be at least 8 characters')
       }
 
       if (password !== confirmPassword) {
@@ -127,7 +127,6 @@ export default function SignUpPage() {
       }, 2000)
 
     } catch (error: any) {
-      console.error('Sign up error:', error)
       setError(error.message || 'An unexpected error occurred')
     } finally {
       setIsLoading(false)

@@ -105,7 +105,6 @@ export default function ClinicDashboard() {
         .single()
 
       if (userError || !userData) {
-        console.error('Error fetching user:', userError)
         router.push('/auth/login')
         return
       }
@@ -143,6 +142,7 @@ export default function ClinicDashboard() {
         .select('*')
         .in('role', ['firefighter', 'chief'])
         .order('name')
+        .limit(500)
 
       if (users) {
         const today = new Date().toISOString().split('T')[0]
@@ -218,7 +218,7 @@ export default function ClinicDashboard() {
         setRecentAssessments(recentFMS)
       }
     } catch (error) {
-      console.error('Error loading dashboard:', error)
+      // Error loading dashboard
     } finally {
       setLoading(false)
     }
@@ -354,11 +354,17 @@ export default function ClinicDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-4 mb-8">
           <Link href="/clinic/team/new?role=firefighter">
             <Button className="w-full h-auto py-4 bg-fire-red hover:bg-red-700 text-white flex items-center justify-center gap-2">
               <UserPlus className="h-5 w-5" />
               <span>Add Firefighter</span>
+            </Button>
+          </Link>
+          <Link href="/clinic/review">
+            <Button className="w-full h-auto py-4 bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2">
+              <ClipboardCheck className="h-5 w-5" />
+              <span>Review Tests</span>
             </Button>
           </Link>
           <Link href="/clinic/series">

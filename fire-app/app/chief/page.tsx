@@ -78,12 +78,11 @@ export default function ChiefDashboard() {
       // Get user profile
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('*')
+        .select('id, name, role, station_id, points, current_streak, longest_streak, last_activity_date, badge_number, email, created_at, updated_at')
         .eq('id', authUser.id)
         .single()
 
       if (userError || !userData) {
-        console.error('Error fetching user:', userError)
         router.push('/auth/login')
         return
       }
@@ -99,7 +98,7 @@ export default function ChiefDashboard() {
       // Get ALL stations (department-wide view)
       const { data: stationsData } = await supabase
         .from('stations')
-        .select('*')
+        .select('id, name, department, location, city, state, created_at, updated_at')
         .order('name')
 
       if (stationsData) {
@@ -109,9 +108,10 @@ export default function ChiefDashboard() {
       // Get ALL firefighters across all stations
       const { data: firefighters } = await supabase
         .from('users')
-        .select('*')
+        .select('id, name, role, station_id, points, current_streak, longest_streak, last_activity_date, badge_number, email, created_at, updated_at')
         .eq('role', 'firefighter')
         .order('points', { ascending: false })
+        .limit(500)
 
       if (firefighters && stationsData) {
         const today = new Date().toISOString().split('T')[0]
@@ -165,7 +165,7 @@ export default function ChiefDashboard() {
       }
 
     } catch (error) {
-      console.error('Error loading dashboard:', error)
+      // Error loading dashboard
     } finally {
       setLoading(false)
     }

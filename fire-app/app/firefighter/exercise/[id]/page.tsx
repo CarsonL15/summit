@@ -56,7 +56,7 @@ export default function ExerciseDetailPage() {
       // Get user profile
       const { data: userData } = await supabase
         .from('users')
-        .select('*')
+        .select('id, name, role, points, current_streak, longest_streak, last_activity_date, email, badge_number, station_id, created_at, updated_at')
         .eq('id', authUser.id)
         .single()
 
@@ -70,7 +70,7 @@ export default function ExerciseDetailPage() {
       // Get exercise details
       const { data: exerciseData } = await supabase
         .from('exercises')
-        .select('*')
+        .select('id, name, description, instructions, video_url, thumbnail_url, sets, reps, duration_seconds, category, equipment_needed, tags, created_at, updated_at')
         .eq('id', exerciseId)
         .single()
 
@@ -82,7 +82,7 @@ export default function ExerciseDetailPage() {
       // Get current series assignment if exists
       const { data: seriesAssignment } = await supabase
         .from('series_assignments')
-        .select('*')
+        .select('id, user_id, series_id, current_week, completed, completion_percentage, start_date, end_date, points_earned, assigned_by, fms_score_id, created_at, updated_at')
         .eq('user_id', authUser.id)
         .eq('completed', false)
         .gte('end_date', new Date().toISOString().split('T')[0])
@@ -98,7 +98,7 @@ export default function ExerciseDetailPage() {
         // Get series exercise details for custom sets/reps
         const { data: seriesExercise } = await supabase
           .from('series_exercises')
-          .select('*')
+          .select('id, series_id, exercise_id, week_number, day_number, order_in_week, custom_sets, custom_reps, custom_duration')
           .eq('series_id', seriesAssignment.series_id)
           .eq('exercise_id', exerciseId)
           .eq('week_number', seriesAssignment.current_week || 1)
@@ -121,7 +121,7 @@ export default function ExerciseDetailPage() {
       const today = new Date().toISOString().split('T')[0]
       const { data: todayCompletion } = await supabase
         .from('exercise_completions')
-        .select('*')
+        .select('id, points_awarded')
         .eq('user_id', authUser.id)
         .eq('exercise_id', exerciseId)
         .eq('completed_date', today)
@@ -132,7 +132,7 @@ export default function ExerciseDetailPage() {
         setPointsEarned(todayCompletion.points_awarded || 0)
       }
     } catch (error) {
-      console.error('Error loading exercise:', error)
+      // Error loading exercise
     } finally {
       setLoading(false)
     }
@@ -263,7 +263,7 @@ export default function ExerciseDetailPage() {
         triggerCelebration()
       }
     } catch (error) {
-      console.error('Error completing exercise:', error)
+      // Error completing exercise
     } finally {
       setCompleting(false)
     }
@@ -274,7 +274,7 @@ export default function ExerciseDetailPage() {
       // Get all achievements
       const { data: achievements } = await supabase
         .from('achievements')
-        .select('*')
+        .select('id, name, description, icon, points_required, type')
 
       if (!achievements) return
 
@@ -282,7 +282,7 @@ export default function ExerciseDetailPage() {
       const { data: userAchievements } = await supabase
         .from('user_achievements')
         .select('achievement_id')
-        .eq('user_id', user?.id)
+        .eq('user_id', user!.id)
 
       const earnedIds = new Set(userAchievements?.map(ua => ua.achievement_id))
 
@@ -305,7 +305,7 @@ export default function ExerciseDetailPage() {
 
         if (earned) {
           newAchievements.push({
-            user_id: user?.id,
+            user_id: user!.id,
             achievement_id: achievement.id
           })
         }
@@ -318,7 +318,7 @@ export default function ExerciseDetailPage() {
           .insert(newAchievements)
       }
     } catch (error) {
-      console.error('Error checking achievements:', error)
+      // Error checking achievements
     }
   }
 
@@ -350,7 +350,7 @@ export default function ExerciseDetailPage() {
         .update({ completion_percentage: completionPercentage })
         .eq('id', seriesAssignment.id)
     } catch (error) {
-      console.error('Error updating series progress:', error)
+      // Error updating series progress
     }
   }
 
@@ -494,15 +494,28 @@ export default function ExerciseDetailPage() {
         <Card className="bg-white/5 border-white/10 mb-6">
           <CardContent className="p-4">
             {exercise.video_url ? (
-              <div className="aspect-video rounded-lg overflow-hidden">
-                <iframe
-                  src={`${exercise.video_url.replace('youtu.be/', 'www.youtube-nocookie.com/embed/').replace('youtube.com/watch?v=', 'youtube-nocookie.com/embed/')}?rel=0&modestbranding=1&showinfo=0&iv_load_policy=3`}
-                  title={`${exercise.name} demonstration`}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
+              exercise.video_url.includes('youtu') ? (
+                <div className="aspect-video rounded-lg overflow-hidden">
+                  <iframe
+                    src={`${exercise.video_url.replace('youtu.be/', 'www.youtube-nocookie.com/embed/').replace('youtube.com/watch?v=', 'youtube-nocookie.com/embed/')}?rel=0&modestbranding=1&showinfo=0&iv_load_policy=3`}
+                    title={`${exercise.name} demonstration`}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              ) : (
+                <div className="aspect-video rounded-lg overflow-hidden bg-black">
+                  <video
+                    src={exercise.video_url}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="w-full h-full object-contain"
+                    title={`${exercise.name} demonstration`}
+                  />
+                </div>
+              )
             ) : (
               <div className="aspect-video bg-black/50 rounded-lg flex items-center justify-center">
                 <div className="text-center">

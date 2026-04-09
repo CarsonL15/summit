@@ -51,12 +51,11 @@ export default function ProfilePage() {
       // Get user profile
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('*')
+        .select('id, name, badge_number, role, station_id, email, points, current_streak, longest_streak, last_activity_date, created_at, updated_at')
         .eq('id', authUser.id)
         .single()
 
       if (userError || !userData) {
-        console.error('Error fetching user:', userError)
         setError('Failed to load profile')
         return
       }
@@ -69,7 +68,7 @@ export default function ProfilePage() {
       if (userData.station_id) {
         const { data: stationData } = await supabase
           .from('stations')
-          .select('*')
+          .select('id, name, location, city, state, department, created_at, updated_at')
           .eq('id', userData.station_id)
           .single()
 
@@ -79,7 +78,6 @@ export default function ProfilePage() {
       }
 
     } catch (error) {
-      console.error('Error loading profile:', error)
       setError('Failed to load profile')
     } finally {
       setLoading(false)
@@ -111,7 +109,7 @@ export default function ProfilePage() {
       // Reload user data
       const { data: updatedUser } = await supabase
         .from('users')
-        .select('*')
+        .select('id, name, badge_number, role, station_id, email, points, current_streak, longest_streak, last_activity_date, created_at, updated_at')
         .eq('id', user.id)
         .single()
 
@@ -126,7 +124,6 @@ export default function ProfilePage() {
       setTimeout(() => setSuccess(''), 3000)
 
     } catch (error: any) {
-      console.error('Error updating profile:', error)
       setError(error.message || 'Failed to update profile')
     } finally {
       setIsSaving(false)
@@ -152,6 +149,8 @@ export default function ProfilePage() {
         return { label: 'Firefighter', color: 'bg-fire-gold/20 text-fire-gold border-fire-gold/30' }
       case 'clinic':
         return { label: 'Clinic Staff', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' }
+      case 'assessor':
+        return { label: 'FMS Assessor', color: 'bg-teal-500/20 text-teal-400 border-teal-500/30' }
       default:
         return { label: role, color: 'bg-gray-500/20 text-gray-400 border-gray-500/30' }
     }
@@ -188,7 +187,8 @@ export default function ProfilePage() {
   }
 
   const roleDisplay = getRoleDisplay(user.role)
-  const dashboardPath = user.role === 'clinic' ? '/clinic' :
+  const dashboardPath = user.role === 'assessor' ? '/assessor' :
+                        user.role === 'clinic' ? '/clinic' :
                         user.role === 'chief' || user.role === 'admin' ? '/chief' : '/firefighter'
 
   return (
