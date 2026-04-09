@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import {
-  Activity, Users, ClipboardCheck, LogOut, Search, Clock, User
+  Activity, Users, ClipboardCheck, LogOut, Search, Clock, User, Shield
 } from 'lucide-react'
 import { Database } from '@/types/database'
 import { getRiskTextColor } from '@/lib/utils/fms'
@@ -208,6 +208,14 @@ export default function AssessorDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
+              {user.role === 'admin' && (
+                <Link href="/admin">
+                  <Button variant="ghost" size="sm" className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 gap-1">
+                    <Shield className="h-4 w-4" />
+                    <span className="hidden sm:inline text-xs">Admin</span>
+                  </Button>
+                </Link>
+              )}
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-white">{user.name}</p>
                 <p className="text-xs text-gray-400">Assessor</p>

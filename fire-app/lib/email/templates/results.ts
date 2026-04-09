@@ -241,18 +241,25 @@ export function buildResultsEmailHtml({
             </td>
           </tr>
 
-          <!-- Sign Up CTA -->
+          <!-- Login CTA -->
           <tr>
-            <td style="padding:0 40px 32px;text-align:center;">
+            <td style="padding:0 40px 16px;text-align:center;">
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
                 <tr>
                   <td align="center" style="background-color:#2563eb;border-radius:8px;">
                     <a href="${appLink}" target="_blank" style="display:inline-block;padding:16px 40px;color:#ffffff;font-size:18px;font-weight:700;text-decoration:none;">
-                      Sign Up Now
+                      Log In to Your Account
                     </a>
                   </td>
                 </tr>
               </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 40px 32px;text-align:center;">
+              <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.5;">
+                First time logging in? Click <strong>Forgot Password</strong> on the login page to set your password.
+              </p>
             </td>
           </tr>
 
@@ -359,7 +366,8 @@ What you do next is what determines the outcome.
 
 Stay consistent. Stay proactive. Stay ready.
 
-SIGN UP NOW: ${appLink}
+LOG IN TO YOUR ACCOUNT: ${appLink}
+(First time? Click "Forgot Password" on the login page to set your password.)
 
 Best regards,
 Dr. Asdrubal Lopez, DC, DACBSP

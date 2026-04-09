@@ -259,6 +259,14 @@ export default function ChiefDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
+              {user.role === 'admin' && (
+                <Link href="/admin">
+                  <Button variant="ghost" size="sm" className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 gap-1">
+                    <Shield className="h-4 w-4" />
+                    <span className="hidden sm:inline text-xs">Admin</span>
+                  </Button>
+                </Link>
+              )}
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-white">{user.name}</p>
                 <p className="text-xs text-gray-400">Department Chief</p>

@@ -59,7 +59,9 @@ export default function LoginPage() {
         router.push('/assessor')
       } else if (userData?.role === 'clinic') {
         router.push('/clinic')
-      } else if (userData?.role === 'chief' || userData?.role === 'admin') {
+      } else if (userData?.role === 'admin') {
+        router.push('/admin')
+      } else if (userData?.role === 'chief') {
         router.push('/chief')
       } else {
         router.push('/firefighter')

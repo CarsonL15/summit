@@ -187,9 +187,10 @@ export default function ProfilePage() {
   }
 
   const roleDisplay = getRoleDisplay(user.role)
-  const dashboardPath = user.role === 'assessor' ? '/assessor' :
+  const dashboardPath = user.role === 'admin' ? '/admin' :
+                        user.role === 'assessor' ? '/assessor' :
                         user.role === 'clinic' ? '/clinic' :
-                        user.role === 'chief' || user.role === 'admin' ? '/chief' : '/firefighter'
+                        user.role === 'chief' ? '/chief' : '/firefighter'
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">

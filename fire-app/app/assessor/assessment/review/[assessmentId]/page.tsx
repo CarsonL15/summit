@@ -211,6 +211,8 @@ export default function AssessorSeriesAssignmentReview() {
         .insert({
           user_id: assessment.user_id,
           series_id: selectedSeries,
+          assigned_by: authUser?.id || null,
+          fms_score_id: assessmentId,
           start_date: startDate.toISOString().split('T')[0],
           end_date: endDate.toISOString().split('T')[0],
           current_week: 1,
@@ -235,9 +237,9 @@ export default function AssessorSeriesAssignmentReview() {
           return labels[area] || area.replace(/_/g, ' ')
         })
 
-        const riskLevel = assessment.total_score >= 18 ? 'Low'
+        const riskLevel = assessment.total_score >= 18 ? 'Low Risk'
           : assessment.total_score >= 15 ? 'Moderate'
-          : 'High'
+          : 'High Risk'
 
         fetch('/api/email/results', {
           method: 'POST',
