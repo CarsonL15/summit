@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { AnimatedCard, AnimatedCardContent, AnimatedCardHeader, AnimatedCardTitle } from '@/components/ui/animated-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  Activity, ArrowLeft, CheckCircle, Target, Clock, Star, Calendar, Dumbbell
+  Activity, ArrowLeft, CheckCircle, Target, Clock, Star, Calendar, Dumbbell, ClipboardCheck, UserCheck
 } from 'lucide-react'
 import { Database } from '@/types/database'
 import { getRiskLevel, getRiskTextColor, getRiskLabel } from '@/lib/utils/fms'
@@ -24,16 +25,17 @@ interface AssessmentWithUser extends FMSScoreData {
 }
 
 interface SeriesWithExercises extends SeriesData {
-  exercises: Record<number, ExerciseData[]>  // Dynamic weeks: { 1: [...], 2: [...], etc }
+  exercises: Record<number, ExerciseData[]>
 }
 
-export default function ClinicSeriesAssignmentReview() {
+export default function AssessorSeriesAssignmentReview() {
   const [assessment, setAssessment] = useState<AssessmentWithUser | null>(null)
   const [availableSeries, setAvailableSeries] = useState<SeriesData[]>([])
   const [selectedSeries, setSelectedSeries] = useState<string>('')
   const [seriesExercises, setSeriesExercises] = useState<SeriesWithExercises | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
 
   const router = useRouter()
   const params = useParams()
@@ -58,15 +60,15 @@ export default function ClinicSeriesAssignmentReview() {
         return
       }
 
-      // Verify clinic role
-      const { data: clinicUser } = await supabase
+      // Verify assessor role
+      const { data: assessorUser } = await supabase
         .from('users')
         .select('role')
         .eq('id', authUser.id)
         .single()
 
-      if (!clinicUser || (clinicUser.role !== 'clinic' && clinicUser.role !== 'admin')) {
-        router.push('/clinic')
+      if (!assessorUser || (assessorUser.role !== 'assessor' && assessorUser.role !== 'admin')) {
+        router.push('/assessor')
         return
       }
 
@@ -81,7 +83,7 @@ export default function ClinicSeriesAssignmentReview() {
         .single() as { data: any; error: any }
 
       if (error || !assessmentData) {
-        router.push('/clinic')
+        router.push('/assessor')
         return
       }
 
@@ -93,10 +95,9 @@ export default function ClinicSeriesAssignmentReview() {
       // Load available series based on weak areas
       const weakAreas = (assessmentData.weak_areas as any)?.areas || []
 
-      // Get all series
       const { data: seriesData } = await supabase
         .from('series')
-        .select('*')
+        .select('id, name, description, target_area, difficulty_level, series_type, days_per_week, duration_weeks, created_at, updated_at')
         .order('name')
 
       if (seriesData) {
@@ -119,7 +120,6 @@ export default function ClinicSeriesAssignmentReview() {
 
         setAvailableSeries(suggestedSeries)
 
-        // Auto-select best matching series
         if (suggestedSeries.length > 0) {
           setSelectedSeries(suggestedSeries[0].id)
         }
@@ -133,25 +133,19 @@ export default function ClinicSeriesAssignmentReview() {
 
   const loadSeriesExercises = async (seriesId: string) => {
     try {
-      // Get series details
       const { data: seriesData, error: seriesError } = await supabase
         .from('series')
-        .select('*')
+        .select('id, name, description, target_area, difficulty_level, series_type, days_per_week, duration_weeks, created_at, updated_at')
         .eq('id', seriesId)
         .single()
 
-      if (seriesError) {
-        return
-      }
+      if (seriesError || !seriesData) return
 
-      if (!seriesData) return
-
-      // Get exercises for each week
       const { data: seriesExercisesData, error: exercisesError } = await supabase
         .from('series_exercises')
         .select(`
           id, series_id, exercise_id, week_number, day_number, order_in_week, custom_sets, custom_reps, custom_duration,
-          exercise:exercise_id (*)
+          exercise:exercise_id (id, name, description, sets, reps, category)
         `)
         .eq('series_id', seriesId)
         .order('week_number')
@@ -161,7 +155,6 @@ export default function ClinicSeriesAssignmentReview() {
         // Error fetching series exercises
       }
 
-      // Build exercises dynamically for all weeks
       const exercises: Record<number, ExerciseData[]> = {}
       const totalWeeks = seriesData.duration_weeks || 3
 
@@ -203,17 +196,15 @@ export default function ClinicSeriesAssignmentReview() {
           return
         }
 
-        // Mark existing as completed
         await supabase
           .from('series_assignments')
           .update({ completed: true })
           .in('id', existingAssignments.map(a => a.id))
       }
 
-      // Create new series assignment
       const startDate = new Date()
       const endDate = new Date()
-      endDate.setDate(endDate.getDate() + 21) // 3-week program
+      endDate.setDate(endDate.getDate() + 21)
 
       const { error } = await supabase
         .from('series_assignments')
@@ -261,8 +252,8 @@ export default function ClinicSeriesAssignmentReview() {
         }).catch(() => {})
       }
 
-      // Success - redirect to clinic review page
-      router.push('/clinic/review')
+      // Show success interstitial instead of redirecting
+      setShowSuccess(true)
     } catch (error) {
       alert('Failed to assign series. Please try again.')
     } finally {
@@ -270,15 +261,41 @@ export default function ClinicSeriesAssignmentReview() {
     }
   }
 
-  // Use centralized FMS utility functions
   const getScoreColor = getRiskTextColor
   const getScoreLabel = getRiskLabel
+
+  // Success interstitial - "Go see the doctor"
+  if (showSuccess && assessment) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center p-4">
+        <Card className="bg-white/5 border-white/10 max-w-md w-full">
+          <CardContent className="p-8 text-center">
+            <div className="mb-6">
+              <div className="inline-flex p-4 bg-green-500/20 rounded-full mb-4">
+                <CheckCircle className="h-16 w-16 text-green-400" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Assessment Complete!</h2>
+            <p className="text-gray-400 mb-6">
+              Please direct <span className="text-white font-semibold">{assessment.user.name}</span> to the doctor for results review.
+            </p>
+            <Link href="/assessor">
+              <Button className="bg-teal-600 hover:bg-teal-700 text-white w-full text-lg py-6">
+                <ClipboardCheck className="h-5 w-5 mr-2" />
+                Next Assessment
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
         <div className="text-center">
-          <Target className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
+          <Target className="h-16 w-16 text-teal-400 animate-pulse mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">Loading Assessment...</h2>
           <Skeleton className="h-4 w-48 mx-auto" />
         </div>
@@ -303,14 +320,14 @@ export default function ClinicSeriesAssignmentReview() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push('/clinic')}
+              onClick={() => router.push('/assessor')}
               className="text-gray-400 hover:text-white"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
             </Button>
             <div className="flex items-center gap-2">
-              <Activity className="h-6 w-6 text-blue-400" />
+              <ClipboardCheck className="h-6 w-6 text-teal-400" />
               <h1 className="text-lg font-bold text-white">Assign Training Series</h1>
             </div>
             <div />
@@ -368,7 +385,7 @@ export default function ClinicSeriesAssignmentReview() {
             </div>
 
             {/* Weak Areas */}
-            <div className="mb-4">
+            <div className="mb-6">
               <p className="text-sm text-gray-400 mb-2">Weak Areas</p>
               <div className="flex flex-wrap gap-1">
                 {((assessment.weak_areas as any)?.areas || []).map((area: string) => (
@@ -384,79 +401,61 @@ export default function ClinicSeriesAssignmentReview() {
               </div>
             </div>
 
+            {/* Movement Breakdown */}
+            <div className="mb-6">
+              <p className="text-sm text-gray-400 mb-3">Movement Breakdown</p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {[
+                  { label: 'Overhead Squat', fms: assessment.deep_squat, rawL: assessment.deep_squat_raw, rawR: assessment.deep_squat_raw, bilateral: false, painL: assessment.deep_squat_pain_left, painR: assessment.deep_squat_pain_right },
+                  { label: 'Hurdle Step', fms: assessment.hurdle_step, rawL: assessment.hurdle_step_left, rawR: assessment.hurdle_step_right, bilateral: true, painL: assessment.hurdle_step_pain_left, painR: assessment.hurdle_step_pain_right },
+                  { label: 'Inline Lunge', fms: assessment.inline_lunge, rawL: assessment.inline_lunge_left, rawR: assessment.inline_lunge_right, bilateral: true, painL: assessment.inline_lunge_pain_left, painR: assessment.inline_lunge_pain_right, clearing: assessment.clearing_ankle, clearingLabel: 'Ankle' },
+                  { label: 'Shoulder Mobility', fms: assessment.shoulder_mobility, rawL: assessment.shoulder_mobility_left, rawR: assessment.shoulder_mobility_right, bilateral: true, painL: assessment.shoulder_mobility_pain_left, painR: assessment.shoulder_mobility_pain_right, clearing: assessment.clearing_shoulder, clearingLabel: 'Shoulder' },
+                  { label: 'ASLR', fms: assessment.aslr, rawL: assessment.aslr_left, rawR: assessment.aslr_right, bilateral: true, painL: assessment.aslr_pain_left, painR: assessment.aslr_pain_right },
+                  { label: 'Trunk Stability', fms: assessment.trunk_stability, rawL: assessment.trunk_stability_raw, rawR: assessment.trunk_stability_raw, bilateral: false, painL: assessment.trunk_stability_pain_left, painR: assessment.trunk_stability_pain_right, clearing: assessment.clearing_extension, clearingLabel: 'Extension' },
+                  { label: 'Rotary Stability', fms: assessment.rotary_stability, rawL: assessment.rotary_stability_left, rawR: assessment.rotary_stability_right, bilateral: true, painL: assessment.rotary_stability_pain_left, painR: assessment.rotary_stability_pain_right, clearing: assessment.clearing_flexion, clearingLabel: 'Flexion' },
+                ].map((m) => {
+                  const score = m.fms ?? 0
+                  const scoreColor = score <= 1 ? 'text-red-400' : score === 2 ? 'text-yellow-400' : 'text-green-400'
+                  const bgColor = score <= 1 ? 'bg-red-500/10 border-red-500/30' : score === 2 ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-green-500/10 border-green-500/30'
+                  const hasPain = m.painL || m.painR
+                  const clearingFailed = m.clearing === false
+                  return (
+                    <div key={m.label} className={`p-3 rounded-lg border ${bgColor}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="text-xs font-semibold text-white">{m.label}</h4>
+                        <span className={`text-xl font-bold ${scoreColor}`}>{score}</span>
+                      </div>
+                      {m.rawL != null && (
+                        <p className="text-xs text-gray-500">
+                          {m.bilateral ? `L: ${m.rawL}  R: ${m.rawR}` : `Raw: ${m.rawL}`}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {hasPain && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">
+                            Pain{m.painL && m.painR ? ' L+R' : m.painL ? ' L' : ' R'}
+                          </span>
+                        )}
+                        {m.clearing !== undefined && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                            clearingFailed ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
+                          }`}>
+                            {m.clearingLabel} {clearingFailed ? 'Fail' : 'Pass'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
             {assessment.notes && (
               <div className="p-3 bg-white/5 rounded-lg">
                 <p className="text-sm text-gray-400">Assessment Notes:</p>
                 <p className="text-white mt-1">{assessment.notes}</p>
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Movement Breakdown */}
-        <Card className="bg-white/5 border-white/10 mb-8">
-          <CardHeader>
-            <CardTitle className="text-white">Movement Breakdown</CardTitle>
-            <CardDescription className="text-gray-400">Individual scores with raw L/R, pain, and clearing test results</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {[
-                { label: 'Overhead Squat', fms: assessment.deep_squat, rawL: assessment.deep_squat_raw, rawR: assessment.deep_squat_raw, bilateral: false, painL: assessment.deep_squat_pain_left, painR: assessment.deep_squat_pain_right, description: 'Bilateral, symmetrical mobility of hips, knees, and ankles' },
-                { label: 'Hurdle Step', fms: assessment.hurdle_step, rawL: assessment.hurdle_step_left, rawR: assessment.hurdle_step_right, bilateral: true, painL: assessment.hurdle_step_pain_left, painR: assessment.hurdle_step_pain_right, description: 'Stride mechanics and stability during stepping motion' },
-                { label: 'Inline Lunge', fms: assessment.inline_lunge, rawL: assessment.inline_lunge_left, rawR: assessment.inline_lunge_right, bilateral: true, painL: assessment.inline_lunge_pain_left, painR: assessment.inline_lunge_pain_right, clearing: assessment.clearing_ankle, clearingLabel: 'Ankle', description: 'Hip and trunk mobility, ankle and knee stability' },
-                { label: 'Shoulder Mobility', fms: assessment.shoulder_mobility, rawL: assessment.shoulder_mobility_left, rawR: assessment.shoulder_mobility_right, bilateral: true, painL: assessment.shoulder_mobility_pain_left, painR: assessment.shoulder_mobility_pain_right, clearing: assessment.clearing_shoulder, clearingLabel: 'Shoulder', description: 'Bilateral shoulder range of motion' },
-                { label: 'ASLR', fms: assessment.aslr, rawL: assessment.aslr_left, rawR: assessment.aslr_right, bilateral: true, painL: assessment.aslr_pain_left, painR: assessment.aslr_pain_right, description: 'Hamstring and gastroc-soleus flexibility' },
-                { label: 'Trunk Stability', fms: assessment.trunk_stability, rawL: assessment.trunk_stability_raw, rawR: assessment.trunk_stability_raw, bilateral: false, painL: assessment.trunk_stability_pain_left, painR: assessment.trunk_stability_pain_right, clearing: assessment.clearing_extension, clearingLabel: 'Extension', description: 'Core stability during upper body pushing' },
-                { label: 'Rotary Stability', fms: assessment.rotary_stability, rawL: assessment.rotary_stability_left, rawR: assessment.rotary_stability_right, bilateral: true, painL: assessment.rotary_stability_pain_left, painR: assessment.rotary_stability_pain_right, clearing: assessment.clearing_flexion, clearingLabel: 'Flexion', description: 'Multi-plane trunk stability' },
-              ].map((m) => {
-                const score = m.fms ?? 0
-                const scoreColor = score <= 1 ? 'text-red-400' : score === 2 ? 'text-yellow-400' : 'text-green-400'
-                const bgColor = score <= 1 ? 'bg-red-500/10 border-red-500/30' : score === 2 ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-green-500/10 border-green-500/30'
-                const hasPain = m.painL || m.painR
-                const clearingFailed = m.clearing === false
-                return (
-                  <div key={m.label} className={`p-4 rounded-lg border ${bgColor}`}>
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="text-sm font-semibold text-white">{m.label}</h4>
-                      <span className={`text-2xl font-bold ${scoreColor}`}>{score}</span>
-                    </div>
-                    <div className="flex gap-1 mb-2">
-                      {[1, 2, 3].map((n) => (
-                        <div
-                          key={n}
-                          className={`h-1.5 flex-1 rounded-full ${
-                            n <= score
-                              ? score <= 1 ? 'bg-red-400' : score === 2 ? 'bg-yellow-400' : 'bg-green-400'
-                              : 'bg-white/10'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    {m.rawL != null && (
-                      <p className="text-xs text-gray-500 mb-1">
-                        {m.bilateral ? `L: ${m.rawL}  R: ${m.rawR}` : `Raw: ${m.rawL}`}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {hasPain && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">
-                          Pain{m.painL && m.painR ? ' L+R' : m.painL ? ' L' : ' R'}
-                        </span>
-                      )}
-                      {m.clearing !== undefined && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                          clearingFailed ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
-                        }`}>
-                          {m.clearingLabel} {clearingFailed ? 'Fail' : 'Pass'}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400">{m.description}</p>
-                  </div>
-                )
-              })}
-            </div>
           </CardContent>
         </Card>
 
@@ -474,7 +473,7 @@ export default function ClinicSeriesAssignmentReview() {
                     onClick={() => setSelectedSeries(series.id)}
                     className={`w-full p-4 rounded-lg border text-left transition-colors ${
                       selectedSeries === series.id
-                        ? 'bg-blue-500/20 border-blue-500/50'
+                        ? 'bg-teal-500/20 border-teal-500/50'
                         : 'bg-white/5 border-white/10 hover:bg-black/30'
                     }`}
                   >
@@ -483,7 +482,7 @@ export default function ClinicSeriesAssignmentReview() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold text-white">{series.name}</h3>
                           {isRecommended && (
-                            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                            <Badge className="bg-teal-500/20 text-teal-400 border-teal-500/30">
                               <Star className="h-3 w-3 mr-1" />
                               Recommended
                             </Badge>
@@ -524,7 +523,7 @@ export default function ClinicSeriesAssignmentReview() {
                         </div>
                       </div>
                       {selectedSeries === series.id && (
-                        <CheckCircle className="h-5 w-5 text-blue-400 mt-1" />
+                        <CheckCircle className="h-5 w-5 text-teal-400 mt-1" />
                       )}
                     </div>
                   </button>
@@ -558,7 +557,6 @@ export default function ClinicSeriesAssignmentReview() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col h-full">
-                  {/* Dynamic Weeks Display */}
                   <div className="flex-1 min-h-[400px] max-h-[600px] overflow-y-auto pr-2 scrollbar-dark mb-4">
                     {Object.entries(seriesExercises.exercises)
                       .sort(([a], [b]) => Number(a) - Number(b))
@@ -576,7 +574,7 @@ export default function ClinicSeriesAssignmentReview() {
                         }
                         return (
                           <div key={weekNum} className="mb-4">
-                            <h4 className="text-sm font-semibold text-blue-400 mb-2">
+                            <h4 className="text-sm font-semibold text-teal-400 mb-2">
                               Week {weekNumber}: {weekLabels[weekNumber] || `Phase ${weekNumber}`}
                             </h4>
                             <div className="space-y-2">
@@ -616,7 +614,7 @@ export default function ClinicSeriesAssignmentReview() {
                   <Button
                     onClick={handleAssignSeries}
                     disabled={saving || !selectedSeries}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white"
                   >
                     {saving ? (
                       <>

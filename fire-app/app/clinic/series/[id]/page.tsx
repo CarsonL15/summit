@@ -64,7 +64,7 @@ export default function SeriesDetailPage() {
     description: '',
     target_area: '',
     difficulty_level: 'intermediate' as string,
-    series_type: 'strength_conditioning' as string,
+    series_type: 'strength_conditioning' as 'rehab' | 'strength_conditioning',
     days_per_week: 3,
     duration_weeks: 3
   })
@@ -89,7 +89,6 @@ export default function SeriesDetailPage() {
         .single()
 
       if (seriesError || !seriesData) {
-        console.error('Error loading series:', seriesError)
         router.push('/clinic/series')
         return
       }
@@ -114,7 +113,7 @@ export default function SeriesDetailPage() {
         `)
         .eq('series_id', seriesId)
         .order('week_number')
-        .order('order_in_week')
+        .order('order_in_week') as { data: any[] | null; error: any }
 
       if (exercisesData) {
         setSeriesExercises(exercisesData.map(e => ({
@@ -133,7 +132,7 @@ export default function SeriesDetailPage() {
         setAllExercises(allExercisesData)
       }
     } catch (error) {
-      console.error('Error:', error)
+      // Error loading series data
     } finally {
       setLoading(false)
     }
@@ -151,7 +150,7 @@ export default function SeriesDetailPage() {
           description: formData.description || null,
           target_area: formData.target_area || null,
           difficulty_level: formData.difficulty_level,
-          series_type: formData.series_type,
+          series_type: formData.series_type as 'rehab' | 'strength_conditioning',
           days_per_week: formData.days_per_week,
           duration_weeks: formData.duration_weeks,
           updated_at: new Date().toISOString()
@@ -163,7 +162,6 @@ export default function SeriesDetailPage() {
       setSeries({ ...series, ...formData })
       setIsEditing(false)
     } catch (error) {
-      console.error('Error saving:', error)
       alert('Failed to save changes')
     } finally {
       setSaving(false)
@@ -194,7 +192,6 @@ export default function SeriesDetailPage() {
 
       router.push('/clinic/series')
     } catch (error) {
-      console.error('Error deleting:', error)
       alert('Failed to delete series')
       setSaving(false)
     }
@@ -215,7 +212,7 @@ export default function SeriesDetailPage() {
           order_in_week: maxOrder + 1
         })
         .select(`*, exercise:exercises(*)`)
-        .single()
+        .single() as { data: any; error: any }
 
       if (error) throw error
 
@@ -226,7 +223,7 @@ export default function SeriesDetailPage() {
       setShowExerciseSelector(null)
       setExerciseSearch('')
     } catch (error) {
-      console.error('Error adding exercise:', error)
+      // Error adding exercise
     }
   }
 
@@ -241,7 +238,7 @@ export default function SeriesDetailPage() {
 
       setSeriesExercises(seriesExercises.filter(e => e.id !== exerciseId))
     } catch (error) {
-      console.error('Error removing exercise:', error)
+      // Error removing exercise
     }
   }
 
@@ -349,7 +346,7 @@ export default function SeriesDetailPage() {
                 <>
                   <Button
                     variant="outline"
-                    onClick={() => setDeleteConfirm(false) || setIsEditing(true)}
+                    onClick={() => { setDeleteConfirm(false); setIsEditing(true); }}
                     className="bg-white/5 border-white/20 text-white"
                   >
                     Edit Details
@@ -415,7 +412,7 @@ export default function SeriesDetailPage() {
                       value={formData.series_type}
                       onValueChange={(value) => setFormData({
                         ...formData,
-                        series_type: value,
+                        series_type: value as 'rehab' | 'strength_conditioning',
                         days_per_week: value === 'rehab' ? 7 : 3
                       })}
                     >

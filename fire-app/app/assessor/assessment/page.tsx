@@ -15,16 +15,23 @@ import {
 } from 'lucide-react'
 import { Database } from '@/types/database'
 import {
-  FMSRawScores, FMSPainFlags, FMSClearingFlags,
-  DEFAULT_SCORES, DEFAULT_PAIN, DEFAULT_CLEARING,
+  FMSRawScores,
+  FMSPainFlags,
+  FMSClearingFlags,
+  DEFAULT_SCORES,
+  DEFAULT_PAIN,
+  DEFAULT_CLEARING,
   ASSESSMENT_PAGES,
-  calculateLeftMobilityScore, calculateRightMobilityScore,
-  calculateFMSScore, calculateWeakAreas, getRiskTextColor
+  calculateLeftMobilityScore,
+  calculateRightMobilityScore,
+  calculateFMSScore,
+  calculateWeakAreas,
+  getRiskTextColor,
 } from '@/lib/utils/fms'
 
 type UserData = Database['public']['Tables']['users']['Row']
 
-function ClinicFMSAssessmentContent() {
+function AssessorFMSAssessmentContent() {
   const [stationUsers, setStationUsers] = useState<UserData[]>([])
   const [selectedUser, setSelectedUser] = useState<string>('')
   const [selectedUserData, setSelectedUserData] = useState<UserData | null>(null)
@@ -43,7 +50,6 @@ function ClinicFMSAssessmentContent() {
     loadUsers()
   }, [])
 
-  // Auto-select user if passed via query param
   useEffect(() => {
     const userParam = searchParams.get('user')
     if (userParam && stationUsers.length > 0) {
@@ -59,15 +65,16 @@ function ClinicFMSAssessmentContent() {
         return
       }
 
-      // Get clinic user's station
-      const { data: clinicUser } = await supabase
+      const { data: assessorUser } = await supabase
         .from('users')
         .select('station_id, role')
         .eq('id', authUser.id)
         .single() as { data: { station_id: string | null; role: string } | null }
 
-      if (!clinicUser || (clinicUser.role !== 'clinic' && clinicUser.role !== 'admin')) {
-        if (clinicUser?.role === 'chief') {
+      if (!assessorUser || (assessorUser.role !== 'assessor' && assessorUser.role !== 'admin')) {
+        if (assessorUser?.role === 'clinic') {
+          router.push('/clinic')
+        } else if (assessorUser?.role === 'chief') {
           router.push('/chief')
         } else {
           router.push('/firefighter')
@@ -75,14 +82,14 @@ function ClinicFMSAssessmentContent() {
         return
       }
 
-      // Get all firefighters AND chiefs in station
+      // Get all firefighters AND chiefs across all stations
       const { data: usersData } = await supabase
         .from('users')
-        .select('*')
-        .eq('station_id', clinicUser.station_id!)
+        .select('id, name, role, badge_number, station_id, email, points, current_streak, longest_streak, last_activity_date, created_at, updated_at')
         .in('role', ['firefighter', 'chief'])
         .order('role')
         .order('name')
+        .limit(500)
 
       if (usersData) {
         setStationUsers(usersData)
@@ -98,7 +105,6 @@ function ClinicFMSAssessmentContent() {
     setSelectedUser(userId)
     const user = stationUsers.find(u => u.id === userId)
     setSelectedUserData(user || null)
-    // Reset scores when changing user
     setScores({ ...DEFAULT_SCORES })
     setPain({ ...DEFAULT_PAIN })
     setClearing({ ...DEFAULT_CLEARING })
@@ -107,10 +113,7 @@ function ClinicFMSAssessmentContent() {
   }
 
   const handleScoreChange = (field: string, value: number) => {
-    setScores(prev => ({
-      ...prev,
-      [field]: value
-    } as FMSRawScores))
+    setScores(prev => ({ ...prev, [field]: value } as FMSRawScores))
   }
 
   const handleSaveAssessment = async () => {
@@ -125,16 +128,12 @@ function ClinicFMSAssessmentContent() {
       const rightMobility = calculateRightMobilityScore(scores)
       const weakAreas = calculateWeakAreas(perPattern)
 
-      // Save FMS assessment with all columns
       const { data: assessment, error } = await supabase
         .from('fms_scores')
         .insert({
           user_id: selectedUser,
           assessed_by: authUser!.id,
           total_score: fmsTotal,
-          left_mobility_score: leftMobility,
-          right_mobility_score: rightMobility,
-          // Per-pattern FMS scores (after pain/clearing/min)
           deep_squat: perPattern.deep_squat,
           hurdle_step: perPattern.hurdle_step,
           inline_lunge: perPattern.inline_lunge,
@@ -175,7 +174,9 @@ function ClinicFMSAssessmentContent() {
           clearing_shoulder: clearing.clearing_shoulder,
           clearing_extension: clearing.clearing_extension,
           clearing_flexion: clearing.clearing_flexion,
-          // Weak areas & notes
+          // Mobility scores
+          left_mobility_score: leftMobility,
+          right_mobility_score: rightMobility,
           weak_areas: { areas: weakAreas },
           notes: notes || null,
           assessed_date: new Date().toISOString().split('T')[0]
@@ -185,8 +186,8 @@ function ClinicFMSAssessmentContent() {
 
       if (error) throw error
 
-      // Redirect to review page to assign series
-      router.push(`/clinic/assessment/review/${assessment.id}`)
+      // Redirect to review page
+      router.push(`/assessor/assessment/review/${assessment.id}`)
     } catch (error) {
       alert('Failed to save assessment. Please try again.')
     } finally {
@@ -198,13 +199,26 @@ function ClinicFMSAssessmentContent() {
   const { total: fmsTotal, perPattern } = calculateFMSScore(scores, pain, clearing)
   const leftMobility = calculateLeftMobilityScore(scores)
   const rightMobility = calculateRightMobilityScore(scores)
-  const weakAreas = calculateWeakAreas(perPattern)
+
+  // Compute the per-page FMS score for display
+  const getPageFMSScore = (): number => {
+    const patternMap: Record<number, keyof typeof perPattern> = {
+      0: 'deep_squat',
+      1: 'hurdle_step',
+      2: 'inline_lunge',
+      3: 'shoulder_mobility',
+      4: 'aslr',
+      5: 'trunk_stability',
+      6: 'rotary_stability',
+    }
+    return perPattern[patternMap[currentPattern]]
+  }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
         <div className="text-center">
-          <Activity className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
+          <Activity className="h-16 w-16 text-teal-400 animate-pulse mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">Loading Assessment...</h2>
           <Skeleton className="h-4 w-48 mx-auto" />
         </div>
@@ -222,7 +236,7 @@ function ClinicFMSAssessmentContent() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push('/clinic')}
+                onClick={() => router.push('/assessor')}
                 className="text-gray-400 hover:text-white"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -230,7 +244,7 @@ function ClinicFMSAssessmentContent() {
               </Button>
             </div>
             <div className="flex items-center gap-2">
-              <Activity className="h-6 w-6 text-blue-400" />
+              <ClipboardCheck className="h-6 w-6 text-teal-400" />
               <h1 className="text-lg font-bold text-white">FMS Assessment</h1>
             </div>
             <div className="text-right">
@@ -247,7 +261,7 @@ function ClinicFMSAssessmentContent() {
           <AnimatedCard className="bg-white/5 border-white/10">
             <AnimatedCardHeader>
               <AnimatedCardTitle className="text-white flex items-center gap-2">
-                <Users className="h-6 w-6 text-blue-400" />
+                <Users className="h-6 w-6 text-teal-400" />
                 Select Person to Assess
               </AnimatedCardTitle>
             </AnimatedCardHeader>
@@ -288,7 +302,7 @@ function ClinicFMSAssessmentContent() {
                 {stationUsers.length === 0 && (
                   <div className="text-center py-8">
                     <Users className="h-12 w-12 text-gray-600 mx-auto mb-3" />
-                    <p className="text-gray-400">No personnel found in this station</p>
+                    <p className="text-gray-400">No personnel found</p>
                   </div>
                 )}
               </div>
@@ -355,7 +369,7 @@ function ClinicFMSAssessmentContent() {
                             key={score}
                             variant="outline"
                             className={`h-16 text-lg font-bold ${
-                              scores[page.leftScoreKey! as keyof FMSRawScores] === score
+                              scores[page.leftScoreKey!] === score
                                 ? score === 1 ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-600' :
                                   score === 2 ? 'bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600' :
                                   'bg-green-600 hover:bg-green-700 text-white border-green-600'
@@ -377,7 +391,7 @@ function ClinicFMSAssessmentContent() {
                               : 'bg-white/5 text-gray-400 border-white/20 hover:bg-white/10'
                           } border`}
                         >
-                          {pain[page.painLeftKey as keyof FMSPainFlags] ? '\u26A0 Pain' : 'No Pain'}
+                          {pain[page.painLeftKey as keyof FMSPainFlags] ? '\u26A0 Left Pain' : 'Left: No Pain'}
                         </button>
                       </div>
                     </div>
@@ -391,7 +405,7 @@ function ClinicFMSAssessmentContent() {
                             key={score}
                             variant="outline"
                             className={`h-16 text-lg font-bold ${
-                              scores[page.rightScoreKey! as keyof FMSRawScores] === score
+                              scores[page.rightScoreKey!] === score
                                 ? score === 1 ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-600' :
                                   score === 2 ? 'bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600' :
                                   'bg-green-600 hover:bg-green-700 text-white border-green-600'
@@ -413,28 +427,56 @@ function ClinicFMSAssessmentContent() {
                               : 'bg-white/5 text-gray-400 border-white/20 hover:bg-white/10'
                           } border`}
                         >
-                          {pain[page.painRightKey as keyof FMSPainFlags] ? '\u26A0 Pain' : 'No Pain'}
+                          {pain[page.painRightKey as keyof FMSPainFlags] ? '\u26A0 Right Pain' : 'Right: No Pain'}
                         </button>
                       </div>
                     </div>
+
+                    {/* Clearing Test (if applicable) */}
+                    {page.clearingTest && (
+                      <div className="md:col-span-2">
+                        <div className="mt-2 p-4 rounded-lg border border-white/10 bg-white/5">
+                          <p className="text-sm font-medium text-gray-300 mb-3">{page.clearingTest.label}</p>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              className={clearing[page.clearingTest.key as keyof FMSClearingFlags]
+                                ? 'bg-green-600 hover:bg-green-700 text-white border-green-600'
+                                : 'bg-white/5 text-gray-400 border-white/20 hover:bg-white/10'}
+                              onClick={() => setClearing(prev => ({ ...prev, [page.clearingTest!.key]: true } as FMSClearingFlags))}
+                            >
+                              Pass
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className={!clearing[page.clearingTest.key as keyof FMSClearingFlags]
+                                ? 'bg-red-600 hover:bg-red-700 text-white border-red-600'
+                                : 'bg-white/5 text-gray-400 border-white/20 hover:bg-white/10'}
+                              onClick={() => setClearing(prev => ({ ...prev, [page.clearingTest!.key]: false } as FMSClearingFlags))}
+                            >
+                              Fail
+                            </Button>
+                          </div>
+                          {!clearing[page.clearingTest.key as keyof FMSClearingFlags] && (
+                            <p className="mt-2 text-sm text-red-400">{'\u26A0'} {page.clearingTest.warningText}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Final Score Display */}
                     <div className="md:col-span-2 mt-4">
                       <div className="bg-white/10 rounded-lg p-4">
                         <div className="flex items-center gap-6">
                           <div>
-                            <p className="text-sm text-gray-400">Raw L: {scores[page.leftScoreKey! as keyof FMSRawScores]}</p>
+                            <p className="text-sm text-gray-400">Raw L: {scores[page.leftScoreKey!]}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-400">Raw R: {scores[page.rightScoreKey! as keyof FMSRawScores]}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-400">FMS Score</p>
-                            <p className="text-2xl font-bold text-white">
-                              {Math.min(scores[page.leftScoreKey! as keyof FMSRawScores], scores[page.rightScoreKey! as keyof FMSRawScores])}
-                            </p>
+                            <p className="text-sm text-gray-400">Raw R: {scores[page.rightScoreKey!]}</p>
                           </div>
                         </div>
+                        <p className="text-sm text-gray-400 mt-2">FMS Score for this pattern</p>
+                        <p className="text-2xl font-bold text-white">{getPageFMSScore()}</p>
                       </div>
                     </div>
                   </div>
@@ -447,7 +489,7 @@ function ClinicFMSAssessmentContent() {
                           key={score}
                           variant="outline"
                           className={`h-16 text-lg font-bold ${
-                            scores[page.scoreKey! as keyof FMSRawScores] === score
+                            scores[page.scoreKey!] === score
                               ? score === 1 ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-600' :
                                 score === 2 ? 'bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600' :
                                 'bg-green-600 hover:bg-green-700 text-white border-green-600'
@@ -461,7 +503,7 @@ function ClinicFMSAssessmentContent() {
                     </div>
 
                     {/* Pain Toggle (single for non-bilateral) */}
-                    <div className="mt-3">
+                    <div className="mt-4">
                       <button
                         onClick={() => {
                           const current = pain[page.painLeftKey as keyof FMSPainFlags]
@@ -477,56 +519,44 @@ function ClinicFMSAssessmentContent() {
                       </button>
                     </div>
 
-                    {/* Final Score Display for non-bilateral */}
+                    {/* Clearing Test (if applicable) */}
+                    {page.clearingTest && (
+                      <div className="mt-6 p-4 rounded-lg border border-white/10 bg-white/5">
+                        <p className="text-sm font-medium text-gray-300 mb-3">{page.clearingTest.label}</p>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            className={clearing[page.clearingTest.key as keyof FMSClearingFlags]
+                              ? 'bg-green-600 hover:bg-green-700 text-white border-green-600'
+                              : 'bg-white/5 text-gray-400 border-white/20 hover:bg-white/10'}
+                            onClick={() => setClearing(prev => ({ ...prev, [page.clearingTest!.key]: true } as FMSClearingFlags))}
+                          >
+                            Pass
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className={!clearing[page.clearingTest.key as keyof FMSClearingFlags]
+                              ? 'bg-red-600 hover:bg-red-700 text-white border-red-600'
+                              : 'bg-white/5 text-gray-400 border-white/20 hover:bg-white/10'}
+                            onClick={() => setClearing(prev => ({ ...prev, [page.clearingTest!.key]: false } as FMSClearingFlags))}
+                          >
+                            Fail
+                          </Button>
+                        </div>
+                        {!clearing[page.clearingTest.key as keyof FMSClearingFlags] && (
+                          <p className="mt-2 text-sm text-red-400">{'\u26A0'} {page.clearingTest.warningText}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Final Score Display */}
                     <div className="mt-4">
                       <div className="bg-white/10 rounded-lg p-4">
-                        <div className="flex items-center gap-6">
-                          <div>
-                            <p className="text-sm text-gray-400">Raw Score: {scores[page.scoreKey! as keyof FMSRawScores]}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-400">FMS Score</p>
-                            <p className="text-2xl font-bold text-white">
-                              {scores[page.scoreKey! as keyof FMSRawScores]}
-                            </p>
-                          </div>
-                        </div>
+                        <p className="text-sm text-gray-400">Raw Score: {scores[page.scoreKey!]}</p>
+                        <p className="text-sm text-gray-400 mt-1">FMS Score for this pattern</p>
+                        <p className="text-2xl font-bold text-white">{getPageFMSScore()}</p>
                       </div>
                     </div>
-                  </div>
-                )}
-
-                {/* Clearing Test */}
-                {page.clearingTest && (
-                  <div className="mt-6 p-4 rounded-lg border border-white/10 bg-white/5">
-                    <p className="text-sm font-medium text-gray-300 mb-3">{page.clearingTest.label}</p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        className={`${
-                          clearing[page.clearingTest.key as keyof FMSClearingFlags]
-                            ? 'bg-green-600 hover:bg-green-700 text-white border-green-600'
-                            : 'bg-white/5 text-white border-white/20 hover:bg-black/30'
-                        }`}
-                        onClick={() => setClearing(prev => ({ ...prev, [page.clearingTest!.key]: true } as FMSClearingFlags))}
-                      >
-                        Pass
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className={`${
-                          !clearing[page.clearingTest.key as keyof FMSClearingFlags]
-                            ? 'bg-red-600 hover:bg-red-700 text-white border-red-600'
-                            : 'bg-white/5 text-white border-white/20 hover:bg-black/30'
-                        }`}
-                        onClick={() => setClearing(prev => ({ ...prev, [page.clearingTest!.key]: false } as FMSClearingFlags))}
-                      >
-                        Fail
-                      </Button>
-                    </div>
-                    {!clearing[page.clearingTest.key as keyof FMSClearingFlags] && (
-                      <p className="mt-2 text-sm text-red-400">{'\u26A0'} {page.clearingTest.warningText}</p>
-                    )}
                   </div>
                 )}
 
@@ -566,7 +596,7 @@ function ClinicFMSAssessmentContent() {
                     key={index}
                     onClick={() => setCurrentPattern(index)}
                     className={`w-2 h-2 rounded-full transition-colors ${
-                      index === currentPattern ? 'bg-blue-400' :
+                      index === currentPattern ? 'bg-teal-400' :
                       index < currentPattern ? 'bg-green-500' : 'bg-white/20'
                     }`}
                   />
@@ -576,7 +606,7 @@ function ClinicFMSAssessmentContent() {
               {currentPattern < ASSESSMENT_PAGES.length - 1 ? (
                 <Button
                   onClick={() => setCurrentPattern(currentPattern + 1)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-teal-600 hover:bg-teal-700 text-white"
                 >
                   Next
                   <ArrowRight className="h-4 w-4 ml-2" />
@@ -589,7 +619,7 @@ function ClinicFMSAssessmentContent() {
               )}
             </div>
 
-            {/* Summary & Notes (shown when all patterns complete) */}
+            {/* Summary & Notes (shown when on last pattern) */}
             {currentPattern === ASSESSMENT_PAGES.length - 1 && (
               <Card className="bg-white/5 border-white/10">
                 <CardHeader>
@@ -615,25 +645,27 @@ function ClinicFMSAssessmentContent() {
                     <div className="p-4 rounded-lg bg-white/5 border border-white/10">
                       <p className="text-sm text-gray-400">Left Mobility</p>
                       <p className="text-3xl font-bold text-white">{leftMobility}/21</p>
+                      <p className="text-sm mt-1 text-gray-500">Raw left-side total</p>
                     </div>
 
                     {/* Right Mobility */}
                     <div className="p-4 rounded-lg bg-white/5 border border-white/10">
                       <p className="text-sm text-gray-400">Right Mobility</p>
                       <p className="text-3xl font-bold text-white">{rightMobility}/21</p>
+                      <p className="text-sm mt-1 text-gray-500">Raw right-side total</p>
                     </div>
                   </div>
 
                   {/* Weak Areas */}
                   <div className="p-4 rounded-lg bg-white/5 border border-white/10 mb-6">
-                    <p className="text-sm text-gray-400">Weak Areas</p>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {weakAreas.map(area => (
+                    <p className="text-sm text-gray-400 mb-2">Weak Areas</p>
+                    <div className="flex flex-wrap gap-1">
+                      {calculateWeakAreas(perPattern).map(area => (
                         <Badge key={area} className="bg-red-500/20 text-red-400 border-red-500/30">
                           {area.replace(/_/g, ' ')}
                         </Badge>
                       ))}
-                      {weakAreas.length === 0 && (
+                      {calculateWeakAreas(perPattern).length === 0 && (
                         <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
                           No significant weaknesses
                         </Badge>
@@ -649,7 +681,7 @@ function ClinicFMSAssessmentContent() {
                       id="notes"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      className="w-full h-24 px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="w-full h-24 px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-400"
                       placeholder="Enter any observations or recommendations..."
                     />
                   </div>
@@ -657,7 +689,7 @@ function ClinicFMSAssessmentContent() {
                   <Button
                     onClick={handleSaveAssessment}
                     disabled={saving}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white"
                   >
                     {saving ? (
                       <>
@@ -667,7 +699,7 @@ function ClinicFMSAssessmentContent() {
                     ) : (
                       <>
                         <Save className="h-4 w-4 mr-2" />
-                        Save Assessment & Assign Series
+                        Save Assessment
                       </>
                     )}
                   </Button>
@@ -681,17 +713,17 @@ function ClinicFMSAssessmentContent() {
   )
 }
 
-export default function ClinicFMSAssessment() {
+export default function AssessorFMSAssessment() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
         <div className="text-center">
-          <Activity className="h-16 w-16 text-blue-400 animate-pulse mx-auto mb-4" />
+          <Activity className="h-16 w-16 text-teal-400 animate-pulse mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">Loading Assessment...</h2>
         </div>
       </div>
     }>
-      <ClinicFMSAssessmentContent />
+      <AssessorFMSAssessmentContent />
     </Suspense>
   )
 }

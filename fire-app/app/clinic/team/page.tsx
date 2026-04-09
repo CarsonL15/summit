@@ -30,11 +30,12 @@ interface UserWithFMS extends UserData {
 export default function ClinicTeamPage() {
   const [clinicUser, setClinicUser] = useState<UserData | null>(null)
   const [station, setStation] = useState<StationData | null>(null)
+  const [allStationsList, setAllStationsList] = useState<StationData[]>([])
   const [stationUsers, setStationUsers] = useState<UserWithFMS[]>([])
   const [filteredUsers, setFilteredUsers] = useState<UserWithFMS[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [roleFilter, setRoleFilter] = useState<'all' | 'chief' | 'firefighter'>('all')
+  const [locationFilter, setLocationFilter] = useState<'all' | 'academy' | string>('all')
   const router = useRouter()
   const supabase = createClient()
 
@@ -44,7 +45,7 @@ export default function ClinicTeamPage() {
 
   useEffect(() => {
     filterUsers()
-  }, [searchQuery, roleFilter, stationUsers])
+  }, [searchQuery, locationFilter, stationUsers])
 
   const filterUsers = () => {
     let filtered = [...stationUsers]
@@ -59,9 +60,14 @@ export default function ClinicTeamPage() {
       )
     }
 
-    // Apply role filter
-    if (roleFilter !== 'all') {
-      filtered = filtered.filter(u => u.role === roleFilter)
+    // Apply location filter
+    if (locationFilter === 'academy') {
+      filtered = filtered.filter(u =>
+        u.station_name?.toLowerCase().includes('academy')
+      )
+    } else if (locationFilter !== 'all') {
+      // Filter by station ID
+      filtered = filtered.filter(u => u.station_id === locationFilter)
     }
 
     setFilteredUsers(filtered)
@@ -84,7 +90,6 @@ export default function ClinicTeamPage() {
         .single()
 
       if (userError || !userData) {
-        console.error('Error fetching user:', userError)
         router.push('/auth/login')
         return
       }
@@ -107,8 +112,9 @@ export default function ClinicTeamPage() {
         .select('*')
         .order('name')
 
-      // Use first station for display purposes
+      // Store stations list and use first for display
       if (allStations && allStations.length > 0) {
+        setAllStationsList(allStations)
         setStation(allStations[0])
       }
 
@@ -123,6 +129,7 @@ export default function ClinicTeamPage() {
         .in('role', ['firefighter', 'chief'])
         .order('role')
         .order('name')
+        .limit(500)
 
       if (users) {
         const today = new Date().toISOString().split('T')[0]
@@ -165,7 +172,7 @@ export default function ClinicTeamPage() {
         setFilteredUsers(usersWithFMS)
       }
     } catch (error) {
-      console.error('Error loading data:', error)
+      // Error loading data
     } finally {
       setLoading(false)
     }
@@ -310,31 +317,42 @@ export default function ClinicTeamPage() {
                   className="pl-10 bg-white/5 border-white/20 text-white placeholder:text-gray-500"
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Button
                   size="sm"
-                  variant={roleFilter === 'all' ? 'default' : 'outline'}
-                  onClick={() => setRoleFilter('all')}
-                  className={roleFilter === 'all' ? 'bg-blue-600' : 'bg-white/5 text-white border-white/20'}
+                  variant={locationFilter === 'all' ? 'default' : 'outline'}
+                  onClick={() => setLocationFilter('all')}
+                  className={locationFilter === 'all' ? 'bg-blue-600' : 'bg-white/5 text-white border-white/20'}
                 >
                   All ({stationUsers.length})
                 </Button>
                 <Button
                   size="sm"
-                  variant={roleFilter === 'chief' ? 'default' : 'outline'}
-                  onClick={() => setRoleFilter('chief')}
-                  className={roleFilter === 'chief' ? 'bg-fire-gold text-black' : 'bg-white/5 text-white border-white/20'}
+                  variant={locationFilter === 'academy' ? 'default' : 'outline'}
+                  onClick={() => setLocationFilter('academy')}
+                  className={locationFilter === 'academy' ? 'bg-fire-gold text-black' : 'bg-white/5 text-white border-white/20'}
                 >
-                  Chiefs ({chiefCount})
+                  Academy
                 </Button>
-                <Button
-                  size="sm"
-                  variant={roleFilter === 'firefighter' ? 'default' : 'outline'}
-                  onClick={() => setRoleFilter('firefighter')}
-                  className={roleFilter === 'firefighter' ? 'bg-fire-red' : 'bg-white/5 text-white border-white/20'}
+                <select
+                  value={locationFilter !== 'all' && locationFilter !== 'academy' ? locationFilter : ''}
+                  onChange={(e) => setLocationFilter(e.target.value || 'all')}
+                  className={`h-9 px-3 rounded-md text-sm font-medium border transition-colors cursor-pointer ${
+                    locationFilter !== 'all' && locationFilter !== 'academy'
+                      ? 'bg-fire-red text-white border-fire-red'
+                      : 'bg-white/5 text-white border-white/20'
+                  }`}
                 >
-                  Firefighters ({firefighterCount})
-                </Button>
+                  <option value="" className="bg-slate-800 text-white">Stations</option>
+                  {allStationsList
+                    .filter(s => !s.name.toLowerCase().includes('academy'))
+                    .map(s => (
+                      <option key={s.id} value={s.id} className="bg-slate-800 text-white">
+                        {s.name}
+                      </option>
+                    ))
+                  }
+                </select>
               </div>
             </div>
           </CardContent>
@@ -422,11 +440,11 @@ export default function ClinicTeamPage() {
               <CardContent className="p-8 text-center">
                 <Users className="h-12 w-12 text-gray-600 mx-auto mb-3" />
                 <p className="text-gray-400 mb-4">
-                  {searchQuery || roleFilter !== 'all'
+                  {searchQuery || locationFilter !== 'all'
                     ? 'No personnel match your search'
                     : 'No personnel in this station'}
                 </p>
-                {!searchQuery && roleFilter === 'all' && (
+                {!searchQuery && locationFilter === 'all' && (
                   <Link href="/clinic/team/new">
                     <Button className="bg-blue-600 hover:bg-blue-700">
                       Add First Member

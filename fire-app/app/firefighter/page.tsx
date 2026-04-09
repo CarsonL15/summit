@@ -65,12 +65,11 @@ export default function FirefighterDashboard() {
       // Get user profile
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('*')
+        .select('id, name, role, station_id, points, current_streak, longest_streak, last_activity_date, badge_number, email, created_at, updated_at')
         .eq('id', authUser.id)
         .single()
 
       if (userError || !userData) {
-        console.error('Error fetching user:', userError)
         router.push('/auth/login')
         return
       }
@@ -78,6 +77,14 @@ export default function FirefighterDashboard() {
       // Check role - redirect if not a firefighter
       if (userData.role === 'chief') {
         router.push('/chief')
+        return
+      }
+      if (userData.role === 'assessor') {
+        router.push('/assessor')
+        return
+      }
+      if (userData.role === 'clinic') {
+        router.push('/clinic')
         return
       }
 
@@ -95,7 +102,7 @@ export default function FirefighterDashboard() {
         .gte('end_date', new Date().toISOString().split('T')[0])
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .single() as { data: any; error: any }
 
       if (seriesAssignment && seriesAssignment.series) {
         setCurrentSeries({
@@ -120,7 +127,7 @@ export default function FirefighterDashboard() {
           .eq('series_id', seriesAssignment.series_id)
           .eq('week_number', seriesAssignment.current_week || 1)
           .eq('day_number', todayDayNumber)
-          .order('order_in_week')
+          .order('order_in_week') as { data: any[] | null; error: any }
 
         if (seriesExercises) {
           // Check which exercises are completed today
@@ -164,7 +171,7 @@ export default function FirefighterDashboard() {
         `)
         .eq('user_id', authUser.id)
         .order('earned_at', { ascending: false })
-        .limit(3)
+        .limit(3) as { data: any[] | null; error: any }
 
       if (userAchievements) {
         const achievements = userAchievements
@@ -205,7 +212,7 @@ export default function FirefighterDashboard() {
       }
 
     } catch (error) {
-      console.error('Error loading dashboard:', error)
+      // Error loading dashboard
     } finally {
       setLoading(false)
     }

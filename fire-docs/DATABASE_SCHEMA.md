@@ -1,6 +1,6 @@
 # Fire FMS Database Schema
 
-**Last Updated**: January 20, 2026
+**Last Updated**: April 8, 2026
 **Database**: Supabase (PostgreSQL)
 **Purpose**: Schema reference for Fire Department FMS application
 
@@ -41,7 +41,7 @@ Firefighters, chiefs, and admin users.
 | id | UUID | PRIMARY KEY | Unique identifier |
 | name | VARCHAR(255) | NOT NULL | Full name |
 | email | VARCHAR(255) | UNIQUE | Email address |
-| role | VARCHAR(20) | NOT NULL, CHECK | Role (firefighter, chief, admin, clinic) |
+| role | VARCHAR(20) | NOT NULL, CHECK | Role (firefighter, chief, admin, clinic, assessor) |
 | station_id | UUID | FOREIGN KEY | Reference to stations |
 | badge_number | VARCHAR(50) | | Badge/ID number |
 | points | INTEGER | DEFAULT 0 | Total points earned |
@@ -52,21 +52,62 @@ Firefighters, chiefs, and admin users.
 | updated_at | TIMESTAMP | DEFAULT NOW() | Last update timestamp |
 
 ### 3. fms_scores
-FMS assessment results for users.
+FMS assessment results for users. Stores three types of data per assessment:
+1. **FMS pattern scores** (0-3): Final scores after pain/clearing zeroing and min(L,R) for bilateral movements
+2. **Raw L/R scores** (1-3): As entered by assessor, before any pain/clearing logic
+3. **Pain flags & clearing tests**: Used to compute FMS scores from raw scores
 
 | Column | Type | Constraints | Description |
 |--------|------|------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
 | user_id | UUID | FOREIGN KEY | Reference to users |
 | assessed_by | UUID | FOREIGN KEY | Reference to assessor user |
-| total_score | INTEGER | CHECK (0-21) | Total FMS score |
-| deep_squat | INTEGER | CHECK (0-3) | Deep squat score |
-| hurdle_step | INTEGER | CHECK (0-3) | Hurdle step score |
-| inline_lunge | INTEGER | CHECK (0-3) | Inline lunge score |
-| shoulder_mobility | INTEGER | CHECK (0-3) | Shoulder mobility score |
-| aslr | INTEGER | CHECK (0-3) | Active straight leg raise |
-| trunk_stability | INTEGER | CHECK (0-3) | Trunk stability push-up |
-| rotary_stability | INTEGER | CHECK (0-3) | Rotary stability score |
+| total_score | INTEGER | CHECK (0-21) | Total FMS score (sum of pattern scores) |
+| **Per-pattern FMS scores (after pain/clearing/min)** | | | |
+| deep_squat | INTEGER | CHECK (0-3) | Deep squat FMS score |
+| hurdle_step | INTEGER | CHECK (0-3) | Hurdle step FMS score |
+| inline_lunge | INTEGER | CHECK (0-3) | Inline lunge FMS score |
+| shoulder_mobility | INTEGER | CHECK (0-3) | Shoulder mobility FMS score |
+| aslr | INTEGER | CHECK (0-3) | Active straight leg raise FMS score |
+| trunk_stability | INTEGER | CHECK (0-3) | Trunk stability push-up FMS score |
+| rotary_stability | INTEGER | CHECK (0-3) | Rotary stability FMS score |
+| **Raw L/R scores (1-3, as entered)** | | | |
+| deep_squat_raw | INTEGER | CHECK (1-3) | Deep squat raw score |
+| hurdle_step_left | INTEGER | CHECK (1-3) | Hurdle step left raw |
+| hurdle_step_right | INTEGER | CHECK (1-3) | Hurdle step right raw |
+| inline_lunge_left | INTEGER | CHECK (1-3) | Inline lunge left raw |
+| inline_lunge_right | INTEGER | CHECK (1-3) | Inline lunge right raw |
+| shoulder_mobility_left | INTEGER | CHECK (1-3) | Shoulder mobility left raw |
+| shoulder_mobility_right | INTEGER | CHECK (1-3) | Shoulder mobility right raw |
+| aslr_left | INTEGER | CHECK (1-3) | ASLR left raw |
+| aslr_right | INTEGER | CHECK (1-3) | ASLR right raw |
+| trunk_stability_raw | INTEGER | CHECK (1-3) | Trunk stability raw score |
+| rotary_stability_left | INTEGER | CHECK (1-3) | Rotary stability left raw |
+| rotary_stability_right | INTEGER | CHECK (1-3) | Rotary stability right raw |
+| **Per-side pain flags** | | | |
+| deep_squat_pain_left | BOOLEAN | DEFAULT false | Pain on left during deep squat |
+| deep_squat_pain_right | BOOLEAN | DEFAULT false | Pain on right during deep squat |
+| hurdle_step_pain_left | BOOLEAN | DEFAULT false | Pain on left during hurdle step |
+| hurdle_step_pain_right | BOOLEAN | DEFAULT false | Pain on right during hurdle step |
+| inline_lunge_pain_left | BOOLEAN | DEFAULT false | Pain on left during inline lunge |
+| inline_lunge_pain_right | BOOLEAN | DEFAULT false | Pain on right during inline lunge |
+| shoulder_mobility_pain_left | BOOLEAN | DEFAULT false | Pain on left during shoulder mobility |
+| shoulder_mobility_pain_right | BOOLEAN | DEFAULT false | Pain on right during shoulder mobility |
+| aslr_pain_left | BOOLEAN | DEFAULT false | Pain on left during ASLR |
+| aslr_pain_right | BOOLEAN | DEFAULT false | Pain on right during ASLR |
+| trunk_stability_pain_left | BOOLEAN | DEFAULT false | Pain on left during trunk stability |
+| trunk_stability_pain_right | BOOLEAN | DEFAULT false | Pain on right during trunk stability |
+| rotary_stability_pain_left | BOOLEAN | DEFAULT false | Pain on left during rotary stability |
+| rotary_stability_pain_right | BOOLEAN | DEFAULT false | Pain on right during rotary stability |
+| **Clearing tests (true = pass, false = fail)** | | | |
+| clearing_ankle | BOOLEAN | | Ankle clearing → inline lunge |
+| clearing_shoulder | BOOLEAN | | Shoulder clearing → shoulder mobility |
+| clearing_extension | BOOLEAN | | Extension clearing → trunk stability |
+| clearing_flexion | BOOLEAN | | Flexion clearing → rotary stability |
+| **Mobility scores** | | | |
+| left_mobility_score | INTEGER | | Sum of raw left-side scores (7-21) |
+| right_mobility_score | INTEGER | | Sum of raw right-side scores (7-21) |
+| **Other** | | | |
 | weak_areas | JSONB | | JSON of weak areas |
 | notes | TEXT | | Assessment notes |
 | assessed_date | DATE | DEFAULT CURRENT_DATE | Assessment date |
@@ -228,10 +269,21 @@ Injury tracking with FMS correlation.
 
 ## Key Business Rules
 
-### FMS Scoring
-- Maximum total score is 21 (7 movements × 3 points each)
-- Bilateral movements should use the LOWER of left/right scores
-- Scores ≤1 indicate areas needing corrective exercises
+### FMS Scoring (3-Score Model)
+Each assessment produces three scores:
+1. **FMS Score** (0-21): Functional score. For each pattern: bilateral → min(L,R), then zeroed if pain on either side OR clearing test fails. Risk levels: <15 High, 15-17 Moderate, 18+ Low.
+2. **Left Mobility Score** (7-21): Sum of all raw left-side scores. Non-bilateral movements (deep squat, trunk stability) count toward both sides. Unaffected by pain/clearing.
+3. **Right Mobility Score** (7-21): Same as left but for right side.
+
+- Raw scores are 1-3 (no zero — pain is a separate toggle)
+- Pain on EITHER side of a movement → that movement's FMS contribution = 0
+- Clearing test failures zero the corresponding FMS pattern:
+  - `clearing_ankle` fail → inline_lunge = 0
+  - `clearing_shoulder` fail → shoulder_mobility = 0
+  - `clearing_extension` fail → trunk_stability = 0
+  - `clearing_flexion` fail → rotary_stability = 0
+- FMS scores ≤1 indicate weak areas needing corrective exercises
+- Old records (before migration) have NULL for raw/pain/clearing/mobility columns
 
 ### Mini-Series Model
 - Each series is 3 weeks long

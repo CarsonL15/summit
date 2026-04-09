@@ -48,14 +48,13 @@ export default function SeriesManagementPage() {
         .order('name')
 
       if (error) {
-        console.error('Error loading series:', error)
         return
       }
 
       setSeries(data || [])
       setFilteredSeries(data || [])
     } catch (error) {
-      console.error('Error:', error)
+      // Error loading series
     } finally {
       setLoading(false)
     }
