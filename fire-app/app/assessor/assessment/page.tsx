@@ -186,8 +186,8 @@ function AssessorFMSAssessmentContent() {
 
       if (error) throw error
 
-      // Redirect to review page
-      router.push(`/assessor/assessment/review/${assessment.id}`)
+      // Go back to assessor dashboard to assess the next person
+      router.push('/assessor')
     } catch (error) {
       alert('Failed to save assessment. Please try again.')
     } finally {
