@@ -510,10 +510,12 @@ export default function SeriesDetailPage() {
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <Dumbbell className="h-5 w-5 text-purple-400" />
-            Weekly Exercises
+            Stage Exercises
           </h2>
 
-          {[1, 2, 3].map((week) => (
+          {[1, 2, 3].map((week) => {
+            const stageNames: Record<number, string> = { 1: 'Mobilize', 2: 'Strengthen', 3: 'Integrate' }
+            return (
             <Card key={week} className="bg-white/5 border-white/10">
               <CardHeader
                 className="cursor-pointer"
@@ -521,7 +523,7 @@ export default function SeriesDetailPage() {
               >
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-white flex items-center gap-2">
-                    Week {week}
+                    Stage {week}: {stageNames[week]}
                     <Badge variant="outline" className="text-gray-400 border-white/20">
                       {getExercisesForWeek(week).length} exercises
                     </Badge>
@@ -616,7 +618,7 @@ export default function SeriesDetailPage() {
                 </CardContent>
               )}
             </Card>
-          ))}
+          )})}
         </div>
       </div>
     </div>

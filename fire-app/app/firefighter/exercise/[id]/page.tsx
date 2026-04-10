@@ -15,6 +15,11 @@ import {
   Repeat, Activity, Video, Award, Star, Zap
 } from 'lucide-react'
 import { Database } from '@/types/database'
+import {
+  getLocalToday, getSessionsCompleted, getCurrentStage,
+  TOTAL_SESSIONS,
+  type StageExerciseMap, type CompletionRecord
+} from '@/lib/utils/session'
 
 type ExerciseData = Database['public']['Tables']['exercises']['Row']
 type UserData = Database['public']['Tables']['users']['Row']
@@ -80,12 +85,14 @@ export default function ExerciseDetailPage() {
       }
 
       // Get current series assignment if exists
+      const today = getLocalToday()
+
       const { data: seriesAssignment } = await supabase
         .from('series_assignments')
         .select('id, user_id, series_id, current_week, completed, completion_percentage, start_date, end_date, points_earned, assigned_by, fms_score_id, created_at, updated_at')
         .eq('user_id', authUser.id)
         .eq('completed', false)
-        .gte('end_date', new Date().toISOString().split('T')[0])
+        .gte('end_date', today)
         .single()
 
       let exerciseWithSeries: ExerciseWithSeries = {
@@ -95,22 +102,48 @@ export default function ExerciseDetailPage() {
       }
 
       if (seriesAssignment) {
-        // Get series exercise details for custom sets/reps
-        const { data: seriesExercise } = await supabase
+        // Fetch all series_exercises and completions to derive current stage
+        const { data: allSeriesExercises } = await supabase
           .from('series_exercises')
           .select('id, series_id, exercise_id, week_number, day_number, order_in_week, custom_sets, custom_reps, custom_duration')
           .eq('series_id', seriesAssignment.series_id)
-          .eq('exercise_id', exerciseId)
-          .eq('week_number', seriesAssignment.current_week || 1)
-          .single()
 
-        if (seriesExercise) {
-          exerciseWithSeries = {
-            ...exerciseData,
-            series_assignment: seriesAssignment,
-            series_exercise: seriesExercise,
-            sets_display: seriesExercise.custom_sets || exerciseData.sets || 3,
-            reps_display: seriesExercise.custom_reps || exerciseData.reps
+        const { data: allCompletions } = await supabase
+          .from('exercise_completions')
+          .select('exercise_id, completed_date')
+          .eq('series_assignment_id', seriesAssignment.id)
+
+        if (allSeriesExercises) {
+          // Build stage exercise map and derive current stage
+          const stageExerciseMap: StageExerciseMap = { 1: [], 2: [], 3: [] }
+          for (const se of allSeriesExercises) {
+            const stageNum = se.week_number as 1 | 2 | 3
+            if (stageExerciseMap[stageNum]) {
+              stageExerciseMap[stageNum].push(se.exercise_id)
+            }
+          }
+
+          const completions: CompletionRecord[] = (allCompletions || []).map(c => ({
+            exercise_id: c.exercise_id,
+            completed_date: c.completed_date
+          }))
+
+          const sessions = getSessionsCompleted(completions, stageExerciseMap)
+          const currentStage = getCurrentStage(sessions)
+
+          // Find the series_exercise for this exercise in the current stage
+          const seriesExercise = allSeriesExercises.find(
+            se => se.exercise_id === exerciseId && se.week_number === currentStage.number
+          )
+
+          if (seriesExercise) {
+            exerciseWithSeries = {
+              ...exerciseData,
+              series_assignment: seriesAssignment,
+              series_exercise: seriesExercise,
+              sets_display: seriesExercise.custom_sets || exerciseData.sets || 3,
+              reps_display: seriesExercise.custom_reps || exerciseData.reps
+            }
           }
         }
       }
@@ -118,7 +151,6 @@ export default function ExerciseDetailPage() {
       setExercise(exerciseWithSeries)
 
       // Check if already completed today
-      const today = new Date().toISOString().split('T')[0]
       const { data: todayCompletion } = await supabase
         .from('exercise_completions')
         .select('id, points_awarded')
@@ -183,8 +215,10 @@ export default function ExerciseDetailPage() {
 
     setCompleting(true)
     try {
-      const today = new Date().toISOString().split('T')[0]
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+      const today = getLocalToday()
+      const todayDate = new Date(today + 'T00:00:00')
+      todayDate.setDate(todayDate.getDate() - 1)
+      const yesterday = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`
 
       // Check if this is the first completion today
       const { data: todayCompletions } = await supabase
@@ -197,14 +231,14 @@ export default function ExerciseDetailPage() {
       const isFirstToday = !todayCompletions || todayCompletions.length === 0
       const points = isFirstToday ? 10 : 0
 
-      // Insert completion record
+      // Insert completion record — store stage number (from series_exercise.week_number)
       await supabase
         .from('exercise_completions')
         .insert({
           user_id: user.id,
           exercise_id: exerciseId,
           series_assignment_id: exercise.series_assignment?.id,
-          week_number: exercise.series_assignment?.current_week,
+          week_number: exercise.series_exercise?.week_number || exercise.series_assignment?.current_week,
           completed_date: today,
           points_awarded: points
         })
@@ -324,30 +358,45 @@ export default function ExerciseDetailPage() {
 
   const updateSeriesProgress = async (seriesAssignment: SeriesAssignmentData) => {
     try {
-      // Get total exercises in current week
-      const { data: weekExercises } = await supabase
+      // Fetch all series_exercises and all completions to derive session count
+      const { data: allSeriesExercises } = await supabase
         .from('series_exercises')
-        .select('id')
+        .select('exercise_id, week_number')
         .eq('series_id', seriesAssignment.series_id)
-        .eq('week_number', seriesAssignment.current_week || 1)
 
-      const totalExercises = weekExercises?.length || 0
-
-      // Get completed exercises for current week
-      const { data: completions } = await supabase
+      const { data: allCompletions } = await supabase
         .from('exercise_completions')
-        .select('exercise_id')
+        .select('exercise_id, completed_date')
         .eq('series_assignment_id', seriesAssignment.id)
-        .eq('week_number', seriesAssignment.current_week)
-        .eq('completed_date', new Date().toISOString().split('T')[0])
 
-      const completedExercises = new Set(completions?.map(c => c.exercise_id))
-      const completionPercentage = Math.round((completedExercises.size / totalExercises) * 100)
+      if (!allSeriesExercises) return
 
-      // Update series assignment
+      // Build stage exercise map
+      const stageExerciseMap: StageExerciseMap = { 1: [], 2: [], 3: [] }
+      for (const se of allSeriesExercises) {
+        const stageNum = se.week_number as 1 | 2 | 3
+        if (stageExerciseMap[stageNum]) {
+          stageExerciseMap[stageNum].push(se.exercise_id)
+        }
+      }
+
+      const completions: CompletionRecord[] = (allCompletions || []).map(c => ({
+        exercise_id: c.exercise_id,
+        completed_date: c.completed_date
+      }))
+
+      const sessions = getSessionsCompleted(completions, stageExerciseMap)
+      const currentStage = getCurrentStage(sessions)
+      const completionPercentage = Math.round((sessions / TOTAL_SESSIONS) * 100)
+      const isComplete = sessions >= TOTAL_SESSIONS
+
       await supabase
         .from('series_assignments')
-        .update({ completion_percentage: completionPercentage })
+        .update({
+          completion_percentage: completionPercentage,
+          current_week: currentStage.number,
+          completed: isComplete
+        })
         .eq('id', seriesAssignment.id)
     } catch (error) {
       // Error updating series progress

@@ -16,6 +16,11 @@ import {
   Zap, Shield, Star
 } from 'lucide-react'
 import { Database } from '@/types/database'
+import {
+  getLocalToday, getSessionsCompleted, getCurrentStage, didCompleteSessionToday,
+  isSeriesComplete, TOTAL_SESSIONS,
+  type StageInfo, type StageExerciseMap, type CompletionRecord
+} from '@/lib/utils/session'
 
 type UserData = Database['public']['Tables']['users']['Row']
 type SeriesData = Database['public']['Tables']['series']['Row']
@@ -31,6 +36,7 @@ interface ExerciseWithCompletion extends ExerciseData {
   completed_today: boolean
   sets_display: number
   reps_display: number | null
+  duration_display: number | null
 }
 
 interface UserAchievement extends AchievementData {
@@ -41,7 +47,9 @@ export default function FirefighterDashboard() {
   const [user, setUser] = useState<UserData | null>(null)
   const [currentSeries, setCurrentSeries] = useState<SeriesWithAssignment | null>(null)
   const [todaysExercises, setTodaysExercises] = useState<ExerciseWithCompletion[]>([])
-  const [todayDayLabel, setTodayDayLabel] = useState<string>('Day A')
+  const [sessionsCompleted, setSessionsCompleted] = useState<number>(0)
+  const [currentStageInfo, setCurrentStageInfo] = useState<StageInfo | null>(null)
+  const [sessionDoneToday, setSessionDoneToday] = useState<boolean>(false)
   const [recentAchievements, setRecentAchievements] = useState<UserAchievement[]>([])
   const [leaderboardRank, setLeaderboardRank] = useState<number>(0)
   const [latestFmsScore, setLatestFmsScore] = useState<number | null>(null)
@@ -91,6 +99,8 @@ export default function FirefighterDashboard() {
       setUser(userData)
 
       // Get current series assignment
+      const today = getLocalToday()
+
       const { data: seriesAssignment } = await supabase
         .from('series_assignments')
         .select(`
@@ -99,7 +109,7 @@ export default function FirefighterDashboard() {
         `)
         .eq('user_id', authUser.id)
         .eq('completed', false)
-        .gte('end_date', new Date().toISOString().split('T')[0])
+        .gte('end_date', today)
         .order('created_at', { ascending: false })
         .limit(1)
         .single() as { data: any; error: any }
@@ -110,52 +120,66 @@ export default function FirefighterDashboard() {
           assignment: seriesAssignment
         })
 
-        // Determine if today is Day A or Day B
-        // Mon(1), Wed(3), Fri(5), Sun(0) = Day A (day_number 1)
-        // Tue(2), Thu(4), Sat(6) = Day B (day_number 2)
-        const dayOfWeek = new Date().getDay()
-        const todayDayNumber = [0, 1, 3, 5].includes(dayOfWeek) ? 1 : 2 // Day A or Day B
-        setTodayDayLabel(todayDayNumber === 1 ? 'Day A' : 'Day B')
-
-        // Get exercises for current week AND current day (A or B)
-        const { data: seriesExercises } = await supabase
+        // Fetch ALL series_exercises for the series (all 3 stages, 9 rows)
+        const { data: allSeriesExercises } = await supabase
           .from('series_exercises')
           .select(`
             *,
             exercises:exercise_id (*)
           `)
           .eq('series_id', seriesAssignment.series_id)
-          .eq('week_number', seriesAssignment.current_week || 1)
-          .eq('day_number', todayDayNumber)
+          .order('week_number')
           .order('order_in_week') as { data: any[] | null; error: any }
 
-        if (seriesExercises) {
-          // Check which exercises are completed today
-          const today = new Date().toISOString().split('T')[0]
-          const exerciseIds = seriesExercises.map(se => se.exercise_id).filter(Boolean)
+        // Fetch ALL completions for this assignment
+        const { data: allCompletions } = await supabase
+          .from('exercise_completions')
+          .select('exercise_id, completed_date')
+          .eq('series_assignment_id', seriesAssignment.id)
 
-          const { data: completions } = await supabase
-            .from('exercise_completions')
-            .select('exercise_id')
-            .eq('user_id', authUser.id)
-            .eq('completed_date', today)
-            .in('exercise_id', exerciseIds)
+        if (allSeriesExercises) {
+          // Build stage exercise map (week_number = stage number)
+          const stageExerciseMap: StageExerciseMap = { 1: [], 2: [], 3: [] }
+          for (const se of allSeriesExercises) {
+            const stageNum = se.week_number as 1 | 2 | 3
+            if (stageExerciseMap[stageNum]) {
+              stageExerciseMap[stageNum].push(se.exercise_id)
+            }
+          }
 
-          const completedIds = completions?.map(c => c.exercise_id) || []
+          const completions: CompletionRecord[] = (allCompletions || []).map(c => ({
+            exercise_id: c.exercise_id,
+            completed_date: c.completed_date
+          }))
 
-          const exercisesWithCompletion: ExerciseWithCompletion[] = seriesExercises
+          // Derive session state
+          const sessions = getSessionsCompleted(completions, stageExerciseMap)
+          const stage = getCurrentStage(sessions)
+          const doneToday = didCompleteSessionToday(completions, stageExerciseMap[stage.number], today)
+
+          setSessionsCompleted(sessions)
+          setCurrentStageInfo(stage)
+          setSessionDoneToday(doneToday)
+
+          // Build exercise list for current stage
+          const todayCompletedIds = new Set(
+            (allCompletions || [])
+              .filter(c => c.completed_date === today)
+              .map(c => c.exercise_id)
+          )
+
+          const currentStageSeriesExercises = allSeriesExercises.filter(
+            se => se.week_number === stage.number
+          )
+
+          const exercisesWithCompletion: ExerciseWithCompletion[] = currentStageSeriesExercises
             .filter(se => se.exercises)
-            // Filter out warm-up exercises
-            .filter(se => {
-              const exercise = se.exercises as ExerciseData
-              const tags = exercise.tags || []
-              return !tags.includes('warm-up')
-            })
             .map(se => ({
               ...(se.exercises as ExerciseData),
-              completed_today: completedIds.includes(se.exercise_id),
+              completed_today: todayCompletedIds.has(se.exercise_id),
               sets_display: se.custom_sets || (se.exercises as ExerciseData).sets || 3,
-              reps_display: se.custom_reps || (se.exercises as ExerciseData).reps
+              reps_display: se.custom_reps || (se.exercises as ExerciseData).reps,
+              duration_display: se.custom_duration || (se.exercises as ExerciseData).duration_seconds,
             }))
 
           setTodaysExercises(exercisesWithCompletion)
@@ -314,9 +338,9 @@ export default function FirefighterDashboard() {
                       {latestFmsScore < 15 ? 'High Risk' : latestFmsScore < 18 ? 'Moderate Risk' : 'Low Risk'}
                     </Badge>
                   )}
-                  {currentSeries && (
+                  {currentSeries && currentStageInfo && (
                     <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-sm">
-                      Week {currentSeries.assignment.current_week} of {currentSeries.duration_weeks || 3}
+                      Stage {currentStageInfo.number} · {currentStageInfo.name}
                     </Badge>
                   )}
                   {!currentSeries && (
@@ -393,13 +417,13 @@ export default function FirefighterDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1 sm:mb-2">
                 <Target className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400 mb-1 sm:mb-0" />
                 <span className="text-xl sm:text-2xl font-bold text-white">
-                  {currentSeries?.assignment.completion_percentage || 0}%
+                  {sessionsCompleted}/{TOTAL_SESSIONS}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-gray-400">Series Progress</p>
-              {currentSeries && (
+              <p className="text-xs sm:text-sm text-gray-400">Sessions</p>
+              {currentStageInfo && (
                 <p className="text-xs text-blue-400 mt-1 hidden sm:block">
-                  Week {currentSeries.assignment.current_week}
+                  Stage {currentStageInfo.number} · {currentStageInfo.name}
                 </p>
               )}
             </AnimatedCardContent>
@@ -417,71 +441,56 @@ export default function FirefighterDashboard() {
           </AnimatedCard>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
-          {/* Current Series */}
-          {currentSeries ? (
-            <Card className="bg-white/5 border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-fire-gold" />
-                  Current Series
-                </CardTitle>
-                <CardDescription className="text-gray-400">
-                  {currentSeries.name}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-gray-400">
-                        Week {currentSeries.assignment.current_week} Progress
-                      </span>
-                      <span className="text-white">
-                        {currentSeries.assignment.completion_percentage}%
-                      </span>
-                    </div>
-                    <ProgressBar
-                      value={currentSeries.assignment.completion_percentage || 0}
-                      max={100}
-                      color="fire-gold"
-                    />
-                  </div>
-
-                  <div className="pt-2">
-                    <p className="text-sm text-gray-300 mb-3">{currentSeries.description}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="bg-white/5 border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white">No Active Series</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-400 mb-4">
-                  Ask your chief for an FMS assessment to get started.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Today's Exercises */}
+        {/* Today's Exercises — full width */}
+        {currentSeries && currentStageInfo ? (
           <Card className="bg-white/5 border-white/10">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-blue-400" />
-                Today's Exercises
-              </CardTitle>
-              {currentSeries && (
-                <CardDescription className="text-gray-400">
-                  Week {currentSeries.assignment.current_week} • {todayDayLabel}
-                </CardDescription>
-              )}
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-fire-gold" />
+                  Stage {currentStageInfo.number} · {currentStageInfo.name}
+                </CardTitle>
+                <Badge className="bg-white/10 text-gray-300 border-white/20">
+                  {currentSeries.name}
+                </Badge>
+              </div>
+              <div className="mt-3">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-400">Progress</span>
+                  <span className="text-white">{sessionsCompleted} of {TOTAL_SESSIONS} sessions</span>
+                </div>
+                <ProgressBar
+                  value={Math.round((sessionsCompleted / TOTAL_SESSIONS) * 100)}
+                  max={100}
+                  color="fire-gold"
+                />
+              </div>
             </CardHeader>
             <CardContent>
-              {todaysExercises.length > 0 ? (
+              {isSeriesComplete(sessionsCompleted) ? (
+                /* Series complete state */
+                <div className="text-center py-8">
+                  <div className="inline-flex p-4 bg-green-500/20 rounded-full mb-4">
+                    <Trophy className="h-10 w-10 text-green-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-2">Series Complete!</h3>
+                  <p className="text-gray-400">
+                    You finished all {TOTAL_SESSIONS} sessions. Great work!
+                  </p>
+                </div>
+              ) : sessionDoneToday ? (
+                /* Done for today state */
+                <div className="text-center py-8">
+                  <div className="inline-flex p-4 bg-green-500/20 rounded-full mb-4">
+                    <Target className="h-10 w-10 text-green-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-2">Session Complete!</h3>
+                  <p className="text-gray-400">
+                    Come back tomorrow for session {sessionsCompleted + 1}.
+                  </p>
+                </div>
+              ) : (
+                /* Exercises to do */
                 <div className="space-y-3">
                   {todaysExercises.map(exercise => (
                     <Link
@@ -512,7 +521,7 @@ export default function FirefighterDashboard() {
                               <p className="text-xs text-gray-400">
                                 {exercise.sets_display} sets
                                 {exercise.reps_display && ` × ${exercise.reps_display} reps`}
-                                {exercise.duration_seconds && ` × ${exercise.duration_seconds}s`}
+                                {exercise.duration_display && !exercise.reps_display && ` × ${exercise.duration_display}s`}
                               </p>
                             </div>
                           </div>
@@ -526,14 +535,21 @@ export default function FirefighterDashboard() {
                     </Link>
                   ))}
                 </div>
-              ) : (
-                <p className="text-center text-gray-400 py-8">
-                  No exercises assigned for today
-                </p>
               )}
             </CardContent>
           </Card>
-        </div>
+        ) : (
+          <Card className="bg-white/5 border-white/10">
+            <CardHeader>
+              <CardTitle className="text-white">No Active Series</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-400 mb-4">
+                Ask your chief for an FMS assessment to get started.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Recent Achievements */}
         {recentAchievements.length > 0 && (

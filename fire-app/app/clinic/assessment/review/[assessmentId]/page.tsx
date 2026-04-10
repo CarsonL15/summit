@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { Database } from '@/types/database'
 import { getRiskLevel, getRiskTextColor, getRiskLabel } from '@/lib/utils/fms'
+import { getLocalToday, getWeekStart } from '@/lib/utils/session'
 
 type FMSScoreData = Database['public']['Tables']['fms_scores']['Row']
 type UserData = Database['public']['Tables']['users']['Row']
@@ -163,9 +164,12 @@ export default function ClinicSeriesAssignmentReview() {
 
       // Build exercises dynamically for all weeks
       const exercises: Record<number, ExerciseData[]> = {}
-      const totalWeeks = seriesData.duration_weeks || 3
+      // Use max week_number from actual data (stages 1-3), not duration_weeks
+      const maxStage = (seriesExercisesData || []).reduce(
+        (max, se) => Math.max(max, se.week_number || 0), 0
+      ) || 3
 
-      for (let week = 1; week <= totalWeeks; week++) {
+      for (let week = 1; week <= maxStage; week++) {
         exercises[week] = (seriesExercisesData || [])
           .filter(se => se.week_number === week)
           .map(se => se.exercise as ExerciseData)
@@ -194,7 +198,7 @@ export default function ClinicSeriesAssignmentReview() {
         .select('id')
         .eq('user_id', assessment.user_id)
         .eq('completed', false)
-        .gte('end_date', new Date().toISOString().split('T')[0])
+        .gte('end_date', getLocalToday())
 
       if (existingAssignments && existingAssignments.length > 0) {
         const confirm = window.confirm('This person already has an active series. Do you want to replace it?')
@@ -210,10 +214,12 @@ export default function ClinicSeriesAssignmentReview() {
           .in('id', existingAssignments.map(a => a.id))
       }
 
-      // Create new series assignment
-      const startDate = new Date()
-      const endDate = new Date()
-      endDate.setDate(endDate.getDate() + 21) // 3-week program
+      // Create new series assignment — snap start to Monday, generous 90-day end
+      const today = getLocalToday()
+      const mondayStart = getWeekStart(today)
+      const endDate = new Date(mondayStart + 'T00:00:00')
+      endDate.setDate(endDate.getDate() + 90)
+      const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`
 
       const { error } = await supabase
         .from('series_assignments')
@@ -222,8 +228,8 @@ export default function ClinicSeriesAssignmentReview() {
           series_id: selectedSeries,
           assigned_by: authUser?.id || null,
           fms_score_id: assessmentId,
-          start_date: startDate.toISOString().split('T')[0],
-          end_date: endDate.toISOString().split('T')[0],
+          start_date: mondayStart,
+          end_date: endDateStr,
           current_week: 1,
           completed: false,
           completion_percentage: 0
@@ -506,7 +512,7 @@ export default function ClinicSeriesAssignmentReview() {
                         <div className="flex items-center gap-4 mt-2 text-xs flex-wrap">
                           <span className="text-gray-500">
                             <Clock className="inline h-3 w-3 mr-1" />
-                            3 weeks
+                            {series.duration_weeks || 6} weeks
                           </span>
                           <span className="text-gray-500">
                             <Calendar className="inline h-3 w-3 mr-1" />
@@ -566,20 +572,15 @@ export default function ClinicSeriesAssignmentReview() {
                       .sort(([a], [b]) => Number(a) - Number(b))
                       .map(([weekNum, exercises]) => {
                         const weekNumber = Number(weekNum)
-                        const weekLabels: Record<number, string> = {
-                          1: 'Foundation',
-                          2: 'Progression',
-                          3: 'Integration',
-                          4: 'Strength',
-                          5: 'Power',
-                          6: 'Endurance',
-                          7: 'Peak',
-                          8: 'Mastery'
+                        const stageLabels: Record<number, string> = {
+                          1: 'Mobilize',
+                          2: 'Strengthen',
+                          3: 'Integrate',
                         }
                         return (
                           <div key={weekNum} className="mb-4">
                             <h4 className="text-sm font-semibold text-blue-400 mb-2">
-                              Week {weekNumber}: {weekLabels[weekNumber] || `Phase ${weekNumber}`}
+                              Stage {weekNumber}: {stageLabels[weekNumber] || `Phase ${weekNumber}`}
                             </h4>
                             <div className="space-y-2">
                               {exercises.slice(0, 4).map((exercise, idx) => (

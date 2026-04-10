@@ -17,7 +17,6 @@ export interface Database {
           icon: string | null
           type: string | null
           points_required: number | null
-          streak_required: number | null
           created_at: string
         }
         Insert: {
@@ -27,7 +26,6 @@ export interface Database {
           icon?: string | null
           type?: string | null
           points_required?: number | null
-          streak_required?: number | null
           created_at?: string
         }
         Update: {
@@ -37,7 +35,6 @@ export interface Database {
           icon?: string | null
           type?: string | null
           points_required?: number | null
-          streak_required?: number | null
           created_at?: string
         }
         Relationships: []
