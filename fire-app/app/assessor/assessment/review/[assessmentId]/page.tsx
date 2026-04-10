@@ -93,8 +93,16 @@ export default function AssessorSeriesAssignmentReview() {
         user: assessmentData.user as UserData
       })
 
-      // Load available series based on weak areas
-      const weakAreas = (assessmentData.weak_areas as any)?.areas || []
+      // Build per-pattern score map from assessment for severity-based ranking
+      const patternScores: Record<string, number> = {
+        deep_squat: assessmentData.deep_squat ?? 3,
+        hurdle_step: assessmentData.hurdle_step ?? 3,
+        inline_lunge: assessmentData.inline_lunge ?? 3,
+        shoulder_mobility: assessmentData.shoulder_mobility ?? 3,
+        aslr: assessmentData.aslr ?? 3,
+        trunk_stability: assessmentData.trunk_stability ?? 3,
+        rotary_stability: assessmentData.rotary_stability ?? 3,
+      }
 
       const { data: seriesData } = await supabase
         .from('series')
@@ -102,19 +110,17 @@ export default function AssessorSeriesAssignmentReview() {
         .order('name')
 
       if (seriesData) {
-        // Sort series by relevance: count how many weak areas each series matches
+        // Sort series by the firefighter's actual pattern score (lowest = worst = first)
+        // Score 0 (pain/clearing) → highest priority
+        // Score 1 → high priority
+        // Score 2 → moderate priority
+        // Score 3 → no issue, sort to bottom
         const suggestedSeries = seriesData.sort((a, b) => {
-          const aMatchCount = weakAreas.filter((area: string) =>
-            a.target_area?.toLowerCase().includes(area.replace('_', ' ').toLowerCase()) ||
-            a.name.toLowerCase().includes(area.replace('_', ' ').toLowerCase())
-          ).length
-          const bMatchCount = weakAreas.filter((area: string) =>
-            b.target_area?.toLowerCase().includes(area.replace('_', ' ').toLowerCase()) ||
-            b.name.toLowerCase().includes(area.replace('_', ' ').toLowerCase())
-          ).length
+          const aScore = a.target_area ? (patternScores[a.target_area] ?? 3) : 3
+          const bScore = b.target_area ? (patternScores[b.target_area] ?? 3) : 3
 
-          // More matches = higher priority
-          if (bMatchCount !== aMatchCount) return bMatchCount - aMatchCount
+          // Lower pattern score = higher priority
+          if (aScore !== bScore) return aScore - bScore
           // Alphabetical tiebreaker
           return a.name.localeCompare(b.name)
         })
@@ -475,7 +481,8 @@ export default function AssessorSeriesAssignmentReview() {
             <h2 className="text-xl font-bold text-white mb-4">Recommended Training Series</h2>
             <div className="space-y-3">
               {availableSeries.map((series, index) => {
-                const isRecommended = index < 2 && ((assessment.weak_areas as any)?.areas || []).length > 0
+                const patternScore = series.target_area ? (assessment[series.target_area as keyof typeof assessment] as number ?? 3) : 3
+                const isRecommended = patternScore <= 1
                 return (
                   <button
                     key={series.id}
@@ -494,6 +501,15 @@ export default function AssessorSeriesAssignmentReview() {
                             <Badge className="bg-teal-500/20 text-teal-400 border-teal-500/30">
                               <Star className="h-3 w-3 mr-1" />
                               Recommended
+                            </Badge>
+                          )}
+                          {series.target_area && patternScore < 3 && (
+                            <Badge className={`text-xs ${
+                              patternScore === 0 ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                              patternScore === 1 ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                              'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                            }`}>
+                              FMS Score: {patternScore}/3
                             </Badge>
                           )}
                           {series.series_type && (
@@ -521,7 +537,7 @@ export default function AssessorSeriesAssignmentReview() {
                           {series.target_area && (
                             <span className="text-gray-500">
                               <Target className="inline h-3 w-3 mr-1" />
-                              {series.target_area}
+                              {series.target_area.replace(/_/g, ' ')}
                             </span>
                           )}
                           {series.difficulty_level && (
