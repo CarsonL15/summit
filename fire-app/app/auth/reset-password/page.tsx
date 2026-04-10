@@ -30,6 +30,21 @@ export default function ResetPasswordPage() {
       return
     }
 
+    // PKCE flow: Supabase redirects here with ?code= param
+    // Client-side exchange avoids email-scanner prefetch issues
+    const code = urlParams.get('code')
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (error) {
+          setLinkExpired(true)
+        } else {
+          window.history.replaceState(null, '', window.location.pathname)
+          setSessionReady(true)
+        }
+      })
+      return
+    }
+
     // Also check URL hash for errors (legacy flow)
     const hash = window.location.hash.substring(1)
     const hashParams = new URLSearchParams(hash)
@@ -38,7 +53,6 @@ export default function ResetPasswordPage() {
       return
     }
 
-    // PKCE flow: session was already set by /auth/callback route
     // Legacy flow: try to extract tokens from hash
     const accessToken = hashParams.get('access_token')
     const refreshToken = hashParams.get('refresh_token')

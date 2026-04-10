@@ -98,7 +98,7 @@ export default function LoginPage() {
     try {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
-        redirectTo: `${appUrl}/auth/callback?next=/auth/reset-password`,
+        redirectTo: `${appUrl}/auth/reset-password`,
       })
 
       if (error) {
