@@ -20,7 +20,7 @@ export default function FireLandingPage() {
             </div>
             <Link href="/auth/login">
               <Button variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-black/40 text-sm sm:text-base">
-                Demo Login
+                Sign In
               </Button>
             </Link>
           </div>
