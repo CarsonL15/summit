@@ -140,7 +140,7 @@ export default function LoginPage() {
       if (otpError) {
         setResetError(otpError.message.includes('expired')
           ? 'Code has expired. Please request a new one.'
-          : 'Invalid code. Please check and try again.')
+          : 'Invalid code. Please check the code and try again.')
         return
       }
 
@@ -366,12 +366,12 @@ export default function LoginPage() {
                 </CardTitle>
                 {resetStep === 'email' && (
                   <CardDescription className="text-gray-400">
-                    Enter your email and we&apos;ll send you a 6-digit code to reset your password.
+                    Enter your email and we&apos;ll send you a code to reset your password.
                   </CardDescription>
                 )}
                 {resetStep === 'code' && (
                   <CardDescription className="text-gray-400">
-                    We sent a 6-digit code to <strong className="text-gray-300">{resetEmail}</strong>. Enter it below with your new password.
+                    We sent a code to <strong className="text-gray-300">{resetEmail}</strong>. Enter it below with your new password.
                   </CardDescription>
                 )}
               </CardHeader>
@@ -395,13 +395,13 @@ export default function LoginPage() {
                     )}
 
                     <div className="space-y-2">
-                      <Label htmlFor="otp-code" className="text-gray-300">6-Digit Code</Label>
+                      <Label htmlFor="otp-code" className="text-gray-300">Reset Code</Label>
                       <Input
                         id="otp-code"
                         type="text"
                         inputMode="numeric"
                         pattern="[0-9]*"
-                        maxLength={6}
+                        maxLength={10}
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                         placeholder="000000"
@@ -450,7 +450,7 @@ export default function LoginPage() {
 
                     <Button
                       type="submit"
-                      disabled={verifyLoading || otpCode.length !== 6 || !newPassword || !confirmNewPassword}
+                      disabled={verifyLoading || otpCode.length < 6 || !newPassword || !confirmNewPassword}
                       className="w-full bg-fire-red hover:bg-red-700 text-white"
                     >
                       {verifyLoading ? (
